@@ -92,13 +92,20 @@ async fn main() -> Result<()> {
     let window = driver.window().headless().spawn().await?;
     let tab = window.tab();
 
+    // Navigate to example.com
     tab.goto("https://example.com").await?;
-
     let title = tab.get_title().await?;
     println!("Title: {}", title);
 
-    let button = tab.find_element("button").await?;
-    button.click().await?;
+    // Find the main heading
+    let heading = tab.find_element("h1").await?;
+    let text = heading.get_text().await?;
+    println!("Heading: {}", text);
+
+    // Find the link on the page
+    let link = tab.find_element("a").await?;
+    let href = link.get_attribute("href").await?;
+    println!("Link href: {:?}", href);
 
     window.close().await?;
     Ok(())
