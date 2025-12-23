@@ -1,0 +1,3 @@
+{
+  "rust-analyzer.runnables.command": "/home/gnusocute/.cargo/bin/cargo"
+}
