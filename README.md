@@ -47,7 +47,7 @@ Each Window owns:
 
 ```toml
 [dependencies]
-firefox-webdriver = "0.1"
+firefox-webdriver = "0.1.1"
 tokio = { version = "1.48", features = ["full"] }
 ```
 
