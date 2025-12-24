@@ -16,12 +16,16 @@ High-performance Firefox WebDriver in Rust
 ```
 Rust Application
     │
-    ├── Driver ──► Window ──► Tab ──► Element
+    ├── Driver ──► ConnectionPool (single WebSocket port)
+    │                   │
+    │                   ├── Window 1 ──► Tab ──► Element
+    │                   ├── Window 2 ──► Tab ──► Element
+    │                   └── Window N ──► Tab ──► Element
     │
-    └── WebSocket
+    └── All windows share one WebSocket server
             │
             ▼
-Firefox + Extension
+Firefox + Extension (multiple instances)
     │
     ├── Background Script (command router)
     └── Content Script (DOM access)
@@ -30,7 +34,7 @@ Firefox + Extension
 Each Window owns:
 
 - One Firefox process
-- One WebSocket connection
+- Reference to shared ConnectionPool
 - One profile directory
 
 ## Requirements
@@ -89,7 +93,8 @@ async fn main() -> Result<()> {
     let driver = Driver::builder()
         .binary("/usr/bin/firefox")
         .extension("./extension")
-        .build()?;
+        .build()
+        .await?;
 
     let window = driver.window().headless().spawn().await?;
     let tab = window.tab();
@@ -129,12 +134,40 @@ async fn main() -> Result<()> {
 | `009_proxy.rs`               | HTTP/SOCKS5 proxy configuration    |
 | `010_network_intercept.rs`   | Block rules, request interception  |
 | `011_canvas_fingerprint.rs`  | Canvas randomization test          |
+| `012_multi_window.rs`        | Multi-window stress test           |
 
 ```bash
 cargo run --example 001_basic_launch
 cargo run --example 001_basic_launch -- --no-wait  # Auto-close
 cargo run --example 001_basic_launch -- --debug    # Debug logging
 ```
+
+## Benchmarks
+
+Performance benchmarks for multi-window operations.
+
+### Run Benchmarks
+
+```bash
+# Run benchmark suite (outputs CSV)
+cargo run --release --example bench_runner
+
+# Generate plots (requires matplotlib)
+pip install matplotlib
+python3 benches/plot_results.py
+```
+
+### Results
+
+Benchmarks run with varying window counts (50, 100) and durations (15s, 30s, 60s, 120s).
+
+#### Window Spawn Time
+
+![Window Spawn Benchmark](docs/images/benchmark_spawn.png)
+
+#### Sustained Operations
+
+![Operations Benchmark](docs/images/benchmark_ops.png)
 
 ## Documentation
 

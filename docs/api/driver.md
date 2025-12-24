@@ -15,7 +15,7 @@ fn main() -> Result<()> {
     let driver = Driver::builder()
         .binary("/usr/bin/firefox")
         .extension("./extension")
-        .build()?;
+        .build().await?;
     Ok(())
 }
 ```
@@ -258,7 +258,7 @@ fn example() -> Result<()> {
     let driver = Driver::builder()
         .binary("/usr/bin/firefox")
         .extension("./extension")
-        .build()?;
+        .build().await?;
     Ok(())
 }
 ```

@@ -521,10 +521,9 @@ impl Tab {
         let window = self.get_window()?;
         let callback = Arc::new(callback);
 
-        window
-            .inner
-            .connection
-            .set_event_handler(Box::new(move |event: Event| {
+        window.inner.pool.set_event_handler(
+            window.inner.session_id,
+            Box::new(move |event: Event| {
                 if event.method.as_str() != "network.beforeRequestSent" {
                     return None;
                 }
@@ -538,7 +537,8 @@ impl Tab {
                     "network.beforeRequestSent",
                     result,
                 ))
-            }));
+            }),
+        );
 
         let command = Command::Network(NetworkCommand::AddIntercept {
             intercept_requests: true,
@@ -562,10 +562,9 @@ impl Tab {
         let window = self.get_window()?;
         let callback = Arc::new(callback);
 
-        window
-            .inner
-            .connection
-            .set_event_handler(Box::new(move |event: Event| {
+        window.inner.pool.set_event_handler(
+            window.inner.session_id,
+            Box::new(move |event: Event| {
                 if event.method.as_str() != "network.requestHeaders" {
                     return None;
                 }
@@ -575,7 +574,8 @@ impl Tab {
                 let result = headers_action_to_json(&action);
 
                 Some(EventReply::new(event.id, "network.requestHeaders", result))
-            }));
+            }),
+        );
 
         let command = Command::Network(NetworkCommand::AddIntercept {
             intercept_requests: false,
@@ -599,10 +599,9 @@ impl Tab {
         let window = self.get_window()?;
         let callback = Arc::new(callback);
 
-        window
-            .inner
-            .connection
-            .set_event_handler(Box::new(move |event: Event| {
+        window.inner.pool.set_event_handler(
+            window.inner.session_id,
+            Box::new(move |event: Event| {
                 if event.method.as_str() != "network.requestBody" {
                     return None;
                 }
@@ -615,7 +614,8 @@ impl Tab {
                     "network.requestBody",
                     serde_json::json!({ "action": "allow" }),
                 ))
-            }));
+            }),
+        );
 
         let command = Command::Network(NetworkCommand::AddIntercept {
             intercept_requests: false,
@@ -639,10 +639,9 @@ impl Tab {
         let window = self.get_window()?;
         let callback = Arc::new(callback);
 
-        window
-            .inner
-            .connection
-            .set_event_handler(Box::new(move |event: Event| {
+        window.inner.pool.set_event_handler(
+            window.inner.session_id,
+            Box::new(move |event: Event| {
                 if event.method.as_str() != "network.responseHeaders" {
                     return None;
                 }
@@ -652,7 +651,8 @@ impl Tab {
                 let result = headers_action_to_json(&action);
 
                 Some(EventReply::new(event.id, "network.responseHeaders", result))
-            }));
+            }),
+        );
 
         let command = Command::Network(NetworkCommand::AddIntercept {
             intercept_requests: false,
@@ -676,10 +676,9 @@ impl Tab {
         let window = self.get_window()?;
         let callback = Arc::new(callback);
 
-        window
-            .inner
-            .connection
-            .set_event_handler(Box::new(move |event: Event| {
+        window.inner.pool.set_event_handler(
+            window.inner.session_id,
+            Box::new(move |event: Event| {
                 if event.method.as_str() != "network.responseBody" {
                     return None;
                 }
@@ -689,7 +688,8 @@ impl Tab {
                 let result = body_action_to_json(&action);
 
                 Some(EventReply::new(event.id, "network.responseBody", result))
-            }));
+            }),
+        );
 
         let command = Command::Network(NetworkCommand::AddIntercept {
             intercept_requests: false,
@@ -714,8 +714,8 @@ impl Tab {
         let window = self.get_window()?;
         window
             .inner
-            .connection
-            .set_event_handler(Box::new(|_| None));
+            .pool
+            .clear_event_handler(window.inner.session_id);
 
         let command = Command::Network(NetworkCommand::RemoveIntercept {
             intercept_id: intercept_id.clone(),
@@ -1092,10 +1092,9 @@ impl Tab {
         let window_clone = self.inner.window.clone();
         let tx_clone = Arc::clone(&tx);
 
-        window
-            .inner
-            .connection
-            .set_event_handler(Box::new(move |event: Event| {
+        window.inner.pool.set_event_handler(
+            window.inner.session_id,
+            Box::new(move |event: Event| {
                 if event.method.as_str() != "element.added" {
                     return None;
                 }
@@ -1122,7 +1121,8 @@ impl Tab {
                 }
 
                 None
-            }));
+            }),
+        );
 
         let command = Command::Element(ElementCommand::Subscribe {
             selector: selector.to_string(),
@@ -1139,8 +1139,8 @@ impl Tab {
         {
             window
                 .inner
-                .connection
-                .set_event_handler(Box::new(|_| None));
+                .pool
+                .clear_event_handler(window.inner.session_id);
 
             return Ok(Element::new(
                 ElementId::new(element_id),
@@ -1155,8 +1155,8 @@ impl Tab {
 
         window
             .inner
-            .connection
-            .set_event_handler(Box::new(|_| None));
+            .pool
+            .clear_event_handler(window.inner.session_id);
 
         match result {
             Ok(Ok(element)) => element,
@@ -1188,10 +1188,9 @@ impl Tab {
         let window_clone = self.inner.window.clone();
         let callback = Arc::new(callback);
 
-        window
-            .inner
-            .connection
-            .set_event_handler(Box::new(move |event: Event| {
+        window.inner.pool.set_event_handler(
+            window.inner.session_id,
+            Box::new(move |event: Event| {
                 if event.method.as_str() != "element.added" {
                     return None;
                 }
@@ -1215,7 +1214,8 @@ impl Tab {
                 }
 
                 None
-            }));
+            }),
+        );
 
         let command = Command::Element(ElementCommand::Subscribe {
             selector: selector.to_string(),
@@ -1246,10 +1246,9 @@ impl Tab {
         let element_id_clone = element_id.as_str().to_string();
         let callback = Arc::new(callback);
 
-        window
-            .inner
-            .connection
-            .set_event_handler(Box::new(move |event: Event| {
+        window.inner.pool.set_event_handler(
+            window.inner.session_id,
+            Box::new(move |event: Event| {
                 if event.method.as_str() != "element.removed" {
                     return None;
                 }
@@ -1265,7 +1264,8 @@ impl Tab {
                 }
 
                 None
-            }));
+            }),
+        );
 
         let command = Command::Element(ElementCommand::WatchRemoval {
             element_id: element_id.clone(),
@@ -1286,8 +1286,8 @@ impl Tab {
         if let Some(window) = &self.inner.window {
             window
                 .inner
-                .connection
-                .set_event_handler(Box::new(|_| None));
+                .pool
+                .clear_event_handler(window.inner.session_id);
         }
 
         Ok(())
@@ -1303,7 +1303,11 @@ impl Tab {
     pub(crate) async fn send_command(&self, command: Command) -> Result<Response> {
         let window = self.get_window()?;
         let request = Request::new(self.inner.tab_id, self.inner.frame_id, command);
-        window.inner.connection.send(request).await
+        window
+            .inner
+            .pool
+            .send(window.inner.session_id, request)
+            .await
     }
 
     /// Gets the window reference or returns an error.

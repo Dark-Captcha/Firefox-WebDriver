@@ -1,6 +1,6 @@
 [package]
 name = "firefox-webdriver"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.92.0"
 authors = ["GnU-Chan <gnusocute@gmail.com>"]
@@ -29,7 +29,7 @@ tokio-tungstenite = "0.28.0"
 
 # Serialization
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.146"
+serde_json = "1.0.147"
 
 # Error Handling
 thiserror = "2.0.17"
@@ -52,7 +52,7 @@ rustc-hash = "2.1.1"
 
 # Utilities
 base64 = "0.22.1"
-tempfile = "3.23.0"
+tempfile = "3.24.0"
 uuid = { version = "1.19.0", features = ["v4", "serde"] }
 
 # Archive extraction (for packed extensions)
@@ -62,11 +62,19 @@ async-trait = "0.1.89"
 [dev-dependencies]
 # Testing
 anyhow = "1.0.100"
+dirs = "6.0.0"
 tokio-test = "0.4.4"
 proptest = "1.9.0"
 
+# Benchmarking
+criterion = { version = "0.8.1", features = ["html_reports", "async_tokio"] }
+
 # Logging for Tests
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+
+[[bench]]
+name = "multi_window"
+harness = false
 
 [profile.dev]
 opt-level = 0

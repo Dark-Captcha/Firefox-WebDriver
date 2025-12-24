@@ -11,14 +11,26 @@
 // Imports
 // ============================================================================
 
+use std::path::PathBuf;
 use tracing_subscriber::EnvFilter;
 
 // ============================================================================
-// Constants
+// Path Helpers
 // ============================================================================
 
-pub const FIREFOX_BINARY: &str = "./bin/firefox";
-pub const EXTENSION_PATH: &str = "firefox-webdriver-extension-0.1.0.xpi";
+/// Get the Firefox binary path from $HOME.
+pub fn firefox_binary() -> PathBuf {
+    dirs::home_dir()
+        .expect("Could not determine home directory")
+        .join("Documents/Firefox-WebDriver-Patches/bin/firefox")
+}
+
+/// Get the extension path from $HOME.
+pub fn extension_path() -> PathBuf {
+    dirs::home_dir()
+        .expect("Could not determine home directory")
+        .join("Documents/Firefox-WebDriver-Extension/firefox-webdriver-extension-0.1.0.xpi")
+}
 
 // ============================================================================
 // Types

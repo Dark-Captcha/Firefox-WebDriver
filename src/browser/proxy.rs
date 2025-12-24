@@ -157,10 +157,20 @@ impl ProxyConfig {
     }
 
     /// Creates a SOCKS5 proxy configuration.
+    ///
+    /// Note: DNS proxying is enabled by default for SOCKS5 to prevent DNS leaks.
+    /// Use `.with_proxy_dns(false)` to disable if needed.
     #[inline]
     #[must_use]
     pub fn socks5(host: impl Into<String>, port: u16) -> Self {
-        Self::new(ProxyType::Socks5, host, port)
+        Self {
+            proxy_type: ProxyType::Socks5,
+            host: host.into(),
+            port,
+            username: None,
+            password: None,
+            proxy_dns: true, // Enable by default to prevent DNS leaks
+        }
     }
 
     /// Creates a direct (no proxy) configuration.
@@ -322,6 +332,7 @@ mod tests {
         let proxy = ProxyConfig::socks5("proxy.example.com", 1080);
         assert_eq!(proxy.proxy_type, ProxyType::Socks5);
         assert!(proxy.is_socks());
+        assert!(proxy.proxy_dns); // DNS proxying enabled by default for SOCKS5
     }
 
     #[test]

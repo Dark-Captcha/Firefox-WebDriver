@@ -30,7 +30,7 @@ use std::time::Duration;
 
 use tokio::time::sleep;
 
-use common::{Args, EXTENSION_PATH, FIREFOX_BINARY};
+use common::{Args, extension_path, firefox_binary};
 use firefox_webdriver::{Driver, Result, Tab};
 
 // ============================================================================
@@ -58,40 +58,68 @@ async fn run(args: Args) -> Result<()> {
     println!("=== 011: Canvas Fingerprint Randomization ===\n");
 
     // ========================================================================
-    // Setup
+    // Setup - Create 2 windows with 2 tabs each
     // ========================================================================
 
-    println!("[Setup] Creating driver and window...");
+    println!("[Setup] Creating driver, 2 windows, 2 tabs each...");
 
     let driver = Driver::builder()
-        .binary(FIREFOX_BINARY)
-        .extension(EXTENSION_PATH)
-        .build()?;
+        .binary(firefox_binary())
+        .extension(extension_path())
+        .build()
+        .await?;
 
-    let window = driver.window().window_size(1280, 900).spawn().await?;
-    let tab = window.tab();
+    let window1 = driver.window().window_size(1280, 900).spawn().await?;
+    let window2 = driver.window().window_size(1280, 900).spawn().await?;
+
+    // Create second tab in each window
+    let w1_tab2 = window1.new_tab().await?;
+    let w2_tab2 = window2.new_tab().await?;
+
     println!(
-        "        ✓ Window spawned (session={})\n",
-        window.session_id()
+        "        ✓ Window 1 spawned (session={}) with 2 tabs",
+        window1.session_id()
+    );
+    println!(
+        "        ✓ Window 2 spawned (session={}) with 2 tabs\n",
+        window2.session_id()
     );
 
-    println!("[Setup] Navigating to {TEST_URL}...");
-    tab.goto(TEST_URL).await?;
-    sleep(Duration::from_millis(500)).await;
-    println!("        ✓ Page loaded\n");
+    // Collect all tabs: (window_idx, tab_idx, tab)
+    let tabs: Vec<(usize, usize, Tab)> = vec![
+        (1, 1, window1.tab()),
+        (1, 2, w1_tab2),
+        (2, 1, window2.tab()),
+        (2, 2, w2_tab2),
+    ];
 
-    println!("[Setup] Loading canvas fingerprint test page...");
-    tab.load_html(FINGERPRINT_HTML).await?;
-    sleep(Duration::from_millis(500)).await;
-    println!("        ✓ Test page loaded\n");
+    // Setup all tabs
+    for (win_idx, tab_idx, tab) in &tabs {
+        println!(
+            "[Setup] W{}-T{} - Navigating to {TEST_URL}...",
+            win_idx, tab_idx
+        );
+        tab.goto(TEST_URL).await?;
+        sleep(Duration::from_millis(500)).await;
 
-    println!("[Setup] Injecting canvas fingerprint vectors...");
-    tab.execute_script(CANVAS_SCRIPT).await?;
-    sleep(Duration::from_millis(1000)).await;
-    println!("        ✓ Canvas vectors rendered\n");
+        println!(
+            "[Setup] W{}-T{} - Loading canvas fingerprint test page...",
+            win_idx, tab_idx
+        );
+        tab.load_html(FINGERPRINT_HTML).await?;
+        sleep(Duration::from_millis(500)).await;
+
+        println!(
+            "[Setup] W{}-T{} - Injecting canvas fingerprint vectors...",
+            win_idx, tab_idx
+        );
+        tab.execute_script(CANVAS_SCRIPT).await?;
+        sleep(Duration::from_millis(500)).await;
+        println!("        ✓ W{}-T{} ready\n", win_idx, tab_idx);
+    }
 
     // ========================================================================
-    // Test each canvas vector
+    // Test each canvas vector on all 4 tabs
     // ========================================================================
 
     let vectors = [
@@ -113,21 +141,35 @@ async fn run(args: Args) -> Result<()> {
     for (i, (name, id)) in vectors.iter().enumerate() {
         println!("[Test {}] {} - hash uniqueness", i + 1, name);
 
-        let (unique_count, hashes) = test_canvas_uniqueness(&tab, id, 5).await?;
-        total_unique += unique_count;
-        total_tests += 5;
+        let mut all_hashes: Vec<String> = Vec::new();
 
-        println!("    Hashes collected:");
-        for (j, hash) in hashes.iter().enumerate() {
-            let short_hash = &hash[..16.min(hash.len())];
-            println!("      #{}: {}...", j + 1, short_hash);
+        // Test each tab (2 extractions per tab = 8 total)
+        for (win_idx, tab_idx, tab) in &tabs {
+            let (_, hashes) = test_canvas_uniqueness(tab, id, 2).await?;
+
+            // Display hashes on HTML
+            display_hash_on_html(tab, id, &hashes).await?;
+
+            println!("    W{}-T{} hashes:", win_idx, tab_idx);
+            for (j, hash) in hashes.iter().enumerate() {
+                let short_hash = &hash[..16.min(hash.len())];
+                println!("      #{}: {}...", j + 1, short_hash);
+            }
+
+            all_hashes.extend(hashes);
         }
 
-        if unique_count == 5 {
-            println!("    ✓ All 5 extractions produced unique hashes\n");
+        // Check total uniqueness across all tabs
+        let unique_set: HashSet<_> = all_hashes.iter().collect();
+        let unique_count = unique_set.len();
+        total_unique += unique_count;
+        total_tests += 8;
+
+        if unique_count == 8 {
+            println!("    ✓ All 8 extractions unique (2 per tab × 4 tabs)\n");
         } else {
             println!(
-                "    ✗ Only {}/5 unique hashes (randomization may not be working)\n",
+                "    ✗ Only {}/8 unique hashes (randomization issue)\n",
                 unique_count
             );
             all_passed = false;
@@ -139,11 +181,16 @@ async fn run(args: Args) -> Result<()> {
     // ========================================================================
 
     println!("=== Summary ===");
-    println!("    Total unique hashes: {}/{}", total_unique, total_tests);
+    println!("    Configuration: 2 windows × 2 tabs = 4 tabs total");
+    println!(
+        "    Extractions: 2 per tab × 9 vectors = {} total",
+        total_tests
+    );
+    println!("    Unique hashes: {}/{}", total_unique, total_tests);
 
     if all_passed {
         println!("    ✓ Canvas randomization is working correctly!");
-        println!("    Each toDataURL() call produces a different hash.\n");
+        println!("    All tabs across both windows produce unique fingerprints.\n");
     } else {
         println!("    ⚠ Some canvas extractions produced duplicate hashes.");
         println!("    Check if canvas randomization patch is applied.\n");
@@ -153,7 +200,7 @@ async fn run(args: Args) -> Result<()> {
     // Done
     // ========================================================================
 
-    common::print_logs(&window, 10).await?;
+    common::print_logs(&window1, 10).await?;
 
     println!("\n=== Canvas fingerprint test complete ===\n");
 
@@ -202,6 +249,46 @@ async fn test_canvas_uniqueness(
 
     let unique: HashSet<_> = hashes.iter().collect();
     Ok((unique.len(), hashes))
+}
+
+// ============================================================================
+// Display Hash on HTML
+// ============================================================================
+
+async fn display_hash_on_html(tab: &Tab, canvas_id: &str, hashes: &[String]) -> Result<()> {
+    let hashes_json: Vec<String> = hashes
+        .iter()
+        .map(|h| format!("\"{}\"", &h[..16.min(h.len())]))
+        .collect();
+    let hashes_array = format!("[{}]", hashes_json.join(","));
+
+    let script = format!(
+        r#"
+        (function() {{
+            const canvas = document.getElementById('{canvas_id}');
+            if (!canvas) return;
+            const card = canvas.closest('.card');
+            if (!card) return;
+
+            // Remove existing hash display
+            const existing = card.querySelector('.hash-display');
+            if (existing) existing.remove();
+
+            // Create hash display element
+            const hashDiv = document.createElement('div');
+            hashDiv.className = 'hash-display';
+            hashDiv.style.cssText = 'font-size:9px;color:#666;margin-top:5px;word-break:break-all;max-width:240px;';
+
+            const hashes = {hashes_array};
+            hashDiv.innerHTML = hashes.map((h, i) => `<div>#${{i+1}}: ${{h}}...</div>`).join('');
+
+            card.appendChild(hashDiv);
+        }})();
+        "#
+    );
+
+    tab.execute_script(&script).await?;
+    Ok(())
 }
 
 // ============================================================================

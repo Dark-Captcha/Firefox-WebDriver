@@ -20,7 +20,7 @@ mod common;
 
 use std::path::Path;
 
-use common::{Args, EXTENSION_PATH, FIREFOX_BINARY};
+use common::{Args, extension_path, firefox_binary};
 use firefox_webdriver::{Driver, Result};
 
 // ============================================================================
@@ -59,13 +59,14 @@ async fn run(args: Args) -> Result<()> {
     // ========================================================================
 
     println!("[1] Creating driver...");
-    println!("    Binary: {FIREFOX_BINARY}");
-    println!("    Extension: {EXTENSION_PATH}");
+    println!("    Binary: {:?}", firefox_binary());
+    println!("    Extension: {:?}", extension_path());
 
     let driver = Driver::builder()
-        .binary(FIREFOX_BINARY)
-        .extension(EXTENSION_PATH)
-        .build()?;
+        .binary(firefox_binary())
+        .extension(extension_path())
+        .build()
+        .await?;
 
     println!("    ✓ Driver ready\n");
 

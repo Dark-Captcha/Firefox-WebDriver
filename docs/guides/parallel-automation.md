@@ -16,7 +16,7 @@ async fn example() -> Result<()> {
     let driver = Driver::builder()
         .binary("/usr/bin/firefox")
         .extension("./extension")
-        .build()?;
+        .build().await?;
 
     let mut tasks = JoinSet::new();
 
@@ -54,17 +54,17 @@ async fn example() -> Result<()> {
 Each Window owns:
 
 - One Firefox process
-- One WebSocket connection (unique port)
+- Reference to shared ConnectionPool (single WebSocket port)
 - One profile directory
 
-Windows are completely isolated from each other.
+Windows are isolated by SessionId, all sharing the same WebSocket server.
 
 ```
 Driver
-├── Window 1 (Firefox process, port 9001, profile_1/)
-├── Window 2 (Firefox process, port 9002, profile_2/)
-├── Window 3 (Firefox process, port 9003, profile_3/)
-└── ...
+├── ConnectionPool (single port, e.g., 9000)
+│   ├── Session 1 → Window 1 (Firefox process, profile_1/)
+│   ├── Session 2 → Window 2 (Firefox process, profile_2/)
+│   └── Session 3 → Window 3 (Firefox process, profile_3/)
 ```
 
 ## Resource Isolation
@@ -188,7 +188,7 @@ Tested capacity: 300+ concurrent Windows on a single machine.
 | ---------------- | -------------------------- |
 | RAM              | ~200-500MB per Window      |
 | CPU              | Depends on page complexity |
-| Ports            | One port per Window        |
+| Ports            | One shared port for all    |
 | File descriptors | Multiple per Window        |
 
 ### Tips for Scaling

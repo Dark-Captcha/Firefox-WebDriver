@@ -8,7 +8,7 @@ Automates Firefox browser using a WebExtension-based architecture.
 | ----------- | ---------------------------------------- |
 | Firefox     | Firefox browser installed                |
 | Extension   | Built extension directory or `.xpi` file |
-| Rust        | Rust 1.92.0+ with async runtime (tokio)    |
+| Rust        | Rust 1.92.0+ with async runtime (tokio)  |
 
 ## Installation
 
@@ -31,7 +31,8 @@ async fn main() -> Result<()> {
     let driver = Driver::builder()
         .binary("/usr/bin/firefox")
         .extension("./extension")
-        .build()?;
+        .build()
+        .await?;
 
     // Spawn a headless browser Window
     let window = driver.window()
@@ -64,12 +65,12 @@ async fn main() -> Result<()> {
 
 ## Core Concepts
 
-| Concept   | Description                                 |
-| --------- | ------------------------------------------- |
-| `Driver`  | Factory for creating browser Windows        |
-| `Window`  | Owns Firefox process + WebSocket connection |
-| `Tab`     | Browser tab with frame context              |
-| `Element` | DOM element reference (UUID-based)          |
+| Concept   | Description                                  |
+| --------- | -------------------------------------------- |
+| `Driver`  | Factory for creating browser Windows         |
+| `Window`  | Owns Firefox process, references shared pool |
+| `Tab`     | Browser tab with frame context               |
+| `Element` | DOM element reference (UUID-based)           |
 
 ## Architecture
 
@@ -77,10 +78,10 @@ async fn main() -> Result<()> {
 ┌─────────────────────────────────────────────────────────┐
 │                      Your Rust Code                      │
 │                                                          │
-│  Driver ──► Window ──► Tab ──► Element                  │
+│  Driver ──► ConnectionPool ──► Window ──► Tab ──► Element│
 └─────────────────────────────────────────────────────────┘
                           │
-                          │ WebSocket
+                          │ WebSocket (shared port)
                           ▼
 ┌─────────────────────────────────────────────────────────┐
 │                   Firefox + Extension                    │
@@ -92,7 +93,7 @@ async fn main() -> Result<()> {
 Each Window owns:
 
 - One Firefox process
-- One WebSocket connection
+- Reference to shared ConnectionPool
 - One profile directory
 
 ## Next Steps

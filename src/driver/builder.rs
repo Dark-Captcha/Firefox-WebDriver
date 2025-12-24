@@ -7,11 +7,12 @@
 //! ```no_run
 //! use firefox_webdriver::Driver;
 //!
-//! # fn example() -> firefox_webdriver::Result<()> {
+//! # async fn example() -> firefox_webdriver::Result<()> {
 //! let driver = Driver::builder()
 //!     .binary("/usr/bin/firefox")
 //!     .extension("./extension")
-//!     .build()?;
+//!     .build()
+//!     .await?;
 //! # Ok(())
 //! # }
 //! ```
@@ -110,16 +111,19 @@ impl DriverBuilder {
 
     /// Builds the driver with validation.
     ///
+    /// This is an async operation because it binds the WebSocket server.
+    ///
     /// # Errors
     ///
     /// - [`Error::Config`] if binary or extension not set
     /// - [`Error::FirefoxNotFound`] if binary path doesn't exist
     /// - [`Error::Config`] if extension path doesn't exist
-    pub fn build(self) -> Result<Driver> {
+    /// - [`Error::Io`] if WebSocket server binding fails
+    pub async fn build(self) -> Result<Driver> {
         let binary = self.validate_binary()?;
         let extension = self.validate_extension()?;
 
-        Driver::new(binary, extension)
+        Driver::new(binary, extension).await
     }
 }
 
@@ -223,7 +227,8 @@ mod tests {
 
     #[test]
     fn test_build_fails_without_binary() {
-        let result = DriverBuilder::new().extension("./extension").build();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(DriverBuilder::new().extension("./extension").build());
         assert!(result.is_err());
 
         let err = result.unwrap_err();
@@ -232,7 +237,8 @@ mod tests {
 
     #[test]
     fn test_build_fails_without_extension() {
-        let result = DriverBuilder::new().binary("/bin/sh").build();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(DriverBuilder::new().binary("/bin/sh").build());
         assert!(result.is_err());
 
         let err = result.unwrap_err();
@@ -241,10 +247,13 @@ mod tests {
 
     #[test]
     fn test_build_fails_with_nonexistent_binary() {
-        let result = DriverBuilder::new()
-            .binary("/nonexistent/firefox")
-            .extension_base64("data")
-            .build();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(
+            DriverBuilder::new()
+                .binary("/nonexistent/firefox")
+                .extension_base64("data")
+                .build(),
+        );
 
         assert!(result.is_err());
     }

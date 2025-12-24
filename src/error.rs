@@ -41,7 +41,7 @@ use thiserror::Error;
 use tokio::sync::oneshot::error::RecvError;
 use tokio_tungstenite::tungstenite::Error as WsError;
 
-use crate::identifiers::{ElementId, FrameId, RequestId, TabId};
+use crate::identifiers::{ElementId, FrameId, RequestId, SessionId, TabId};
 
 // ============================================================================
 // Result Alias
@@ -250,6 +250,15 @@ pub enum Error {
         intercept_id: String,
     },
 
+    /// Session not found in connection pool.
+    ///
+    /// Returned when session ID does not exist in the pool.
+    #[error("Session not found: {session_id}")]
+    SessionNotFound {
+        /// The missing session ID.
+        session_id: SessionId,
+    },
+
     // ========================================================================
     // External Errors
     // ========================================================================
@@ -399,6 +408,12 @@ impl Error {
         Self::InterceptNotFound {
             intercept_id: intercept_id.into(),
         }
+    }
+
+    /// Creates a session not found error.
+    #[inline]
+    pub fn session_not_found(session_id: SessionId) -> Self {
+        Self::SessionNotFound { session_id }
     }
 }
 

@@ -4,7 +4,7 @@
 //!
 //! | Type | Description |
 //! |------|-------------|
-//! | [`Window`] | Browser window (owns Firefox process + WebSocket) |
+//! | [`Window`] | Browser window (owns Firefox process, references shared pool) |
 //! | [`Tab`] | Browser tab (frame context) |
 //! | [`Element`] | DOM element reference |
 //!
@@ -17,7 +17,8 @@
 //! let driver = Driver::builder()
 //!     .binary("/usr/bin/firefox")
 //!     .extension("./extension")
-//!     .build()?;
+//!     .build()
+//!     .await?;
 //!
 //! let window = driver.window().headless().spawn().await?;
 //! let tab = window.tab();

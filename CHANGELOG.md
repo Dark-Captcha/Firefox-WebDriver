@@ -3,7 +3,44 @@
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Released]
+## [Unreleased]
+
+### Fixed
+
+- Fixed Connection drop causing premature shutdown when cloned connections were dropped
+
+### Removed
+
+- Removed `PendingServer` (legacy, replaced by `ConnectionPool`)
+
+## [0.1.1] - 2025-12-24
+
+### Changed
+
+#### Architecture
+
+- **BREAKING**: `Driver::builder().build()` is now async (returns `impl Future<Output = Result<Driver>>`)
+- Refactored to single-port multiplexed WebSocket architecture
+- `Driver` now owns a `ConnectionPool` that binds once at creation
+- All Firefox windows connect to the same WebSocket port
+- Messages routed by `SessionId` instead of per-window connections
+- `Window` no longer owns `Connection`, holds `Arc<ConnectionPool>` + `SessionId`
+
+#### Transport
+
+- Added `ConnectionPool` for managing multiple WebSocket connections
+- `ConnectionPool::new()` binds WebSocket server on creation
+- `ConnectionPool::wait_for_session()` waits for specific session to connect
+- `ConnectionPool::send()` routes requests by `SessionId`
+- `Connection` now implements `Clone`
+
+#### Identifiers
+
+- Added `SessionId::from_u32()` for parsing session IDs from READY messages
+
+#### Errors
+
+- Added `Error::SessionNotFound` for when session ID doesn't exist in pool
 
 ## [0.1.0] - 2025-12-23
 
@@ -156,5 +193,6 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - UUID-based element references (undetectable)
 - Per-window process isolation
 
-[Unreleased]: https://github.com/user/firefox-webdriver/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/user/firefox-webdriver/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Dark-Captcha/Firefox-WebDriver/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Dark-Captcha/Firefox-WebDriver/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/Dark-Captcha/Firefox-WebDriver/releases/tag/v0.1.0

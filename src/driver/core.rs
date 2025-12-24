@@ -12,7 +12,8 @@
 //! let driver = Driver::builder()
 //!     .binary("/usr/bin/firefox")
 //!     .extension("./extension")
-//!     .build()?;
+//!     .build()
+//!     .await?;
 //!
 //! let window = driver.window().headless().spawn().await?;
 //! # Ok(())
@@ -24,7 +25,6 @@
 // ============================================================================
 
 use std::fmt;
-use std::net::{IpAddr, Ipv4Addr};
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::Arc;
@@ -37,19 +37,12 @@ use tracing::{debug, info};
 use crate::browser::{Window, WindowBuilder};
 use crate::error::{Error, Result};
 use crate::identifiers::{SessionId, TabId};
-use crate::transport::PendingServer;
+use crate::transport::ConnectionPool;
 
 use super::assets;
 use super::builder::DriverBuilder;
 use super::options::FirefoxOptions;
 use super::profile::{ExtensionSource, Profile};
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-/// Default bind address for WebSocket server (localhost).
-const DEFAULT_BIND_IP: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
 
 // ============================================================================
 // Types
@@ -63,8 +56,8 @@ pub(crate) struct DriverInner {
     /// Extension source for WebDriver functionality.
     pub extension: ExtensionSource,
 
-    /// IP address to bind the WebSocket server to.
-    pub bind_ip: IpAddr,
+    /// Connection pool for multiplexed WebSocket connections.
+    pub pool: Arc<ConnectionPool>,
 
     /// Active windows tracked by their internal UUID.
     pub windows: Mutex<FxHashMap<uuid::Uuid, Window>>,
@@ -90,7 +83,8 @@ pub(crate) struct DriverInner {
 /// let driver = Driver::builder()
 ///     .binary("/usr/bin/firefox")
 ///     .extension("./extension")
-///     .build()?;
+///     .build()
+///     .await?;
 ///
 /// let window = driver.window().headless().spawn().await?;
 /// # Ok(())
@@ -127,11 +121,12 @@ impl Driver {
     /// ```no_run
     /// use firefox_webdriver::Driver;
     ///
-    /// # fn example() -> firefox_webdriver::Result<()> {
+    /// # async fn example() -> firefox_webdriver::Result<()> {
     /// let driver = Driver::builder()
     ///     .binary("/usr/bin/firefox")
     ///     .extension("./extension")
-    ///     .build()?;
+    ///     .build()
+    ///     .await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -188,7 +183,17 @@ impl Driver {
             }
         }
 
+        // Shutdown the connection pool
+        self.inner.pool.shutdown().await;
+
         Ok(())
+    }
+
+    /// Returns the WebSocket port used by the connection pool.
+    #[inline]
+    #[must_use]
+    pub fn port(&self) -> u16 {
+        self.inner.pool.port()
     }
 }
 
@@ -207,15 +212,21 @@ impl Driver {
     /// # Errors
     ///
     /// Returns an error if initialization fails.
-    pub(crate) fn new(binary: PathBuf, extension: ExtensionSource) -> Result<Self> {
+    pub(crate) async fn new(binary: PathBuf, extension: ExtensionSource) -> Result<Self> {
+        // Create connection pool (binds WebSocket server)
+        let pool = ConnectionPool::new().await?;
+
         let inner = Arc::new(DriverInner {
             binary,
             extension,
-            bind_ip: DEFAULT_BIND_IP,
+            pool,
             windows: Mutex::new(FxHashMap::default()),
         });
 
-        info!("Driver initialized");
+        info!(
+            port = inner.pool.port(),
+            "Driver initialized with WebSocket server"
+        );
 
         Ok(Self { inner })
     }
@@ -232,7 +243,6 @@ impl Driver {
     /// Returns an error if:
     /// - Profile creation fails
     /// - Extension installation fails
-    /// - WebSocket server binding fails
     /// - Firefox process fails to spawn
     /// - Extension fails to connect
     pub(crate) async fn spawn_window(
@@ -252,32 +262,36 @@ impl Driver {
         profile.write_prefs(&prefs)?;
         debug!(pref_count = prefs.len(), "Wrote profile preferences");
 
-        // Bind WebSocket server
-        let pending_server = PendingServer::bind(self.inner.bind_ip, 0).await?;
-        let port = pending_server.port();
-        let ws_url = format!("ws://{}:{}", self.inner.bind_ip, port);
-        debug!(port, url = %ws_url, "WebSocket server bound");
-
-        // Generate session ID and data URI
+        // Generate session ID BEFORE launching Firefox
         let session_id = SessionId::next();
+
+        // Use pool's ws_url (same for all windows)
+        let ws_url = self.inner.pool.ws_url();
         let data_uri = assets::build_init_data_uri(&ws_url, &session_id);
+        debug!(session_id = %session_id, url = %ws_url, "Using shared WebSocket server");
 
         // Spawn Firefox process
         let child = self.spawn_firefox_process(&profile, &options, &data_uri)?;
         let pid = child.id();
-        info!(pid, port, "Firefox process spawned");
+        info!(pid, session_id = %session_id, "Firefox process spawned");
 
-        // Wait for extension to connect
-        let (connection, ready_data) = pending_server.accept().await?;
-        debug!("WebSocket handshake completed");
+        // Wait for this specific session to connect via pool
+        let ready_data = self.inner.pool.wait_for_session(session_id).await?;
+        debug!(session_id = %session_id, "Session connected via pool");
 
         // Extract tab ID from ready message
         let tab_id = TabId::new(ready_data.tab_id)
             .ok_or_else(|| Error::protocol("Invalid tab_id in READY message"))?;
         debug!(session_id = %session_id, tab_id = %tab_id, "Browser IDs assigned");
 
-        // Create window
-        let window = Window::new(connection, child, profile, port, session_id, tab_id);
+        // Create window with pool reference
+        let window = Window::new(
+            Arc::clone(&self.inner.pool),
+            child,
+            profile,
+            session_id,
+            tab_id,
+        );
 
         // Track window
         self.inner

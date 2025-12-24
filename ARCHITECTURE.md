@@ -41,16 +41,18 @@ This specification defines a bidirectional protocol for Firefox browser automati
 │                      LOCAL END (Rust)                           │
 ├─────────────────────────────────────────────────────────────────┤
 │  Driver                                                         │
-│    └── Window (owns Firefox process + WebSocket + profile)      │
+│    └── ConnectionPool (single WebSocket server, shared)         │
+│    └── Window (owns Firefox process + profile)                  │
 │          └── Tab (frame context)                                │
 │                └── Element (UUID reference)                     │
 ├─────────────────────────────────────────────────────────────────┤
 │  Transport                                                      │
-│    └── WebSocket Server (localhost:PORT)                        │
+│    └── ConnectionPool (localhost:PORT, multiplexed)             │
+│    └── Connection per session (keyed by SessionId)              │
 │    └── Request/Response correlation (by UUID)                   │
 │    └── Event handler callbacks                                  │
 └───────────────────────────────┬─────────────────────────────────┘
-                                │ WebSocket
+                                │ WebSocket (all windows share port)
 ┌───────────────────────────────▼─────────────────────────────────┐
 │                     REMOTE END (Extension)                      │
 ├─────────────────────────────────────────────────────────────────┤
@@ -124,9 +126,9 @@ Content Script:
 Each `Window` owns:
 
 - One Firefox process
-- One WebSocket connection
+- Reference to shared ConnectionPool (single WebSocket port)
 - One profile directory
-- Independent state
+- Independent state (keyed by SessionId)
 
 ---
 
@@ -232,20 +234,29 @@ Extension sends on connect (nil UUID):
 ### 3.1. Connection Model
 
 ```
-Window (Rust)                    Extension (Background)
+Driver (Rust)                    Extension (Background)
      │                                    │
-     │  1. Bind localhost:0               │
-     │  2. Launch Firefox with data URI   │
+     │  1. Driver::build() binds          │
+     │     ConnectionPool to localhost:0  │
+     │                                    │
+     │  2. spawn_window() launches        │
+     │     Firefox with data URI          │
      │                                    │
      │  3. Data URI posts WEBDRIVER_INIT  │
      │  4. Content script forwards        │
      │                                    │
      │◄─────── WebSocket Connect ─────────│
+     │         (to shared port)           │
      │                                    │
-     │◄─────── READY (nil UUID) ──────────│
+     │◄─────── READY (SessionId) ─────────│
+     │         Pool routes by SessionId   │
      │                                    │
      │◄────── Commands/Events ───────────►│
+     │         Routed by SessionId        │
 ```
+
+All Firefox windows connect to the same WebSocket port. Messages are
+routed by `SessionId` which is included in the READY handshake.
 
 ### 3.2. Data URI Initialization
 
@@ -548,8 +559,8 @@ src/
 ├── identifiers.rs      # ID newtypes
 ├── driver/
 │   ├── mod.rs          # Module exports
-│   ├── core.rs         # Driver factory
-│   ├── builder.rs      # DriverBuilder
+│   ├── core.rs         # Driver factory (owns ConnectionPool)
+│   ├── builder.rs      # DriverBuilder (async build)
 │   ├── options.rs      # FirefoxOptions
 │   ├── profile/
 │   │   ├── mod.rs      # Profile management
@@ -558,7 +569,7 @@ src/
 │   └── assets.rs       # Data URI generation
 ├── browser/
 │   ├── mod.rs          # Module exports
-│   ├── window.rs       # Window + WindowBuilder
+│   ├── window.rs       # Window + WindowBuilder (holds pool ref)
 │   ├── tab.rs          # Tab (navigation, frames, network)
 │   ├── element.rs      # Element (properties, input)
 │   ├── network.rs      # Interception types
@@ -570,7 +581,7 @@ src/
 │   └── event.rs        # Event, EventReply, ParsedEvent
 └── transport/
     ├── mod.rs          # Module exports
-    ├── server.rs       # PendingServer
+    ├── pool.rs         # ConnectionPool (multiplexed connections)
     └── connection.rs   # Connection, event loop
 ```
 
@@ -674,7 +685,7 @@ registry.register("element.getProperty", handleGetProperty);
 let driver = Driver::builder()
     .binary("/path/to/firefox")
     .extension("./extension")
-    .build()?;
+    .build().await?;
 
 // Window
 let window = driver.window().headless().spawn().await?;

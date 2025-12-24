@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
     let driver = Driver::builder()
         .binary("./bin/firefox")
         .extension("firefox-webdriver-extension-0.1.0.xpi")
-        .build()?;
+        .build().await?;
 
     let window = driver.window()
         .window_size(1280, 720)

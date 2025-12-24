@@ -8,29 +8,31 @@
 //! # Architecture
 //!
 //! ```text
-//! ┌─────────────────┐                              ┌─────────────────┐
-//! │  Window (Rust)  │                              │  Extension      │
-//! │                 │         WebSocket            │  (Background)   │
-//! │  PendingServer  │◄────────────────────────────►│                 │
-//! │  → Connection   │      localhost:PORT          │  WebSocket      │
-//! │                 │                              │  Client         │
-//! └─────────────────┘                              └─────────────────┘
+//! ┌─────────────────────────────────────────────────────────────┐
+//! │                     ConnectionPool                          │
+//! │                     (single port)                           │
+//! │  ┌─────────────────────────────────────────────────────┐   │
+//! │  │ SessionId=1 → Connection 1 ──► Firefox 1            │   │
+//! │  │ SessionId=2 → Connection 2 ──► Firefox 2            │   │
+//! │  │ SessionId=3 → Connection 3 ──► Firefox 3            │   │
+//! │  └─────────────────────────────────────────────────────┘   │
+//! └─────────────────────────────────────────────────────────────┘
 //! ```
 //!
 //! # Connection Lifecycle
 //!
-//! 1. `PendingServer::bind` - Bind to localhost with random port
+//! 1. `ConnectionPool::new` - Bind to localhost with random port
 //! 2. Launch Firefox with extension and WebSocket URL
-//! 3. `PendingServer::accept` - Wait for extension to connect
+//! 3. Pool accepts connection, waits for READY with SessionId
 //! 4. `Connection` - Send commands, receive responses/events
-//! 5. `Connection::shutdown` - Close connection on drop
+//! 5. `ConnectionPool::remove` - Clean up on window close
 //!
 //! # Modules
 //!
 //! | Module | Description |
 //! |--------|-------------|
 //! | `connection` | WebSocket connection and event loop |
-//! | `server` | WebSocket server binding and acceptance |
+//! | `pool` | Connection pool for multiplexed connections |
 
 // ============================================================================
 // Submodules
@@ -39,12 +41,12 @@
 /// WebSocket connection and event loop.
 pub mod connection;
 
-/// WebSocket server for Firefox communication.
-pub mod server;
+/// Connection pool for multiplexed WebSocket connections.
+pub mod pool;
 
 // ============================================================================
 // Re-exports
 // ============================================================================
 
 pub use connection::{Connection, EventHandler, ReadyData};
-pub use server::PendingServer;
+pub use pool::ConnectionPool;

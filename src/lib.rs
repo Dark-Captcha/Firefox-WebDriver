@@ -12,7 +12,8 @@
 //!
 //! Key design principles:
 //!
-//! - Each [`Window`] owns: Firefox process + WebSocket connection + event loop
+//! - [`Driver`] owns a shared [`ConnectionPool`](transport::ConnectionPool) (single WebSocket port)
+//! - Each [`Window`] owns: Firefox process + profile, references shared pool
 //! - Protocol uses `module.methodName` format (BiDi-inspired)
 //! - Elements stored by reference in content script `Map` (undetectable)
 //! - Event-driven architecture (no polling)
@@ -28,7 +29,8 @@
 //!     let driver = Driver::builder()
 //!         .binary("/path/to/firefox")
 //!         .extension("/path/to/extension")
-//!         .build()?;
+//!         .build()
+//!         .await?;
 //!
 //!     // Spawn a headless browser window
 //!     let window = driver.window().headless().spawn().await?;

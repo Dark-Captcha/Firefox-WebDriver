@@ -2,7 +2,7 @@
 //!
 //! Each [`Window`] owns:
 //! - One Firefox process (child process)
-//! - One WebSocket connection (unique port)
+//! - Reference to shared ConnectionPool
 //! - One profile directory (temporary or persistent)
 //!
 //! # Example
@@ -14,7 +14,8 @@
 //! let driver = Driver::builder()
 //!     .binary("/usr/bin/firefox")
 //!     .extension("./extension")
-//!     .build()?;
+//!     .build()
+//!     .await?;
 //!
 //! let window = driver.window()
 //!     .headless()
@@ -51,7 +52,7 @@ use crate::identifiers::{FrameId, SessionId, TabId};
 use crate::protocol::{
     BrowsingContextCommand, Command, ProxyCommand, Request, Response, SessionCommand,
 };
-use crate::transport::Connection;
+use crate::transport::ConnectionPool;
 
 use super::Tab;
 use super::proxy::ProxyConfig;
@@ -123,13 +124,11 @@ pub(crate) struct WindowInner {
     pub session_id: SessionId,
     /// Protected process handle.
     process: Mutex<ProcessGuard>,
-    /// WebSocket connection.
-    pub connection: Connection,
+    /// Connection pool (shared with Driver and other Windows).
+    pub pool: Arc<ConnectionPool>,
     /// Profile directory.
     #[allow(dead_code)]
     profile: Profile,
-    /// WebSocket port number.
-    pub port: u16,
     /// All tabs in this window.
     tabs: Mutex<FxHashMap<TabId, Tab>>,
     /// The initial tab created when Firefox opens.
@@ -142,7 +141,8 @@ pub(crate) struct WindowInner {
 
 /// A handle to a Firefox browser window.
 ///
-/// The window owns a Firefox process, WebSocket connection, and profile.
+/// The window owns a Firefox process and profile, and holds a reference
+/// to the shared ConnectionPool for WebSocket communication.
 /// When dropped, the process is automatically killed.
 ///
 /// # Example
@@ -150,7 +150,7 @@ pub(crate) struct WindowInner {
 /// ```no_run
 /// # use firefox_webdriver::Driver;
 /// # async fn example() -> firefox_webdriver::Result<()> {
-/// # let driver = Driver::builder().binary("/usr/bin/firefox").extension("./ext").build()?;
+/// # let driver = Driver::builder().binary("/usr/bin/firefox").extension("./ext").build().await?;
 /// let window = driver.window().headless().spawn().await?;
 ///
 /// // Get the initial tab
@@ -179,7 +179,7 @@ impl fmt::Debug for Window {
         f.debug_struct("Window")
             .field("uuid", &self.inner.uuid)
             .field("session_id", &self.inner.session_id)
-            .field("port", &self.inner.port)
+            .field("port", &self.inner.pool.port())
             .finish_non_exhaustive()
     }
 }
@@ -191,10 +191,9 @@ impl fmt::Debug for Window {
 impl Window {
     /// Creates a new window handle.
     pub(crate) fn new(
-        connection: Connection,
+        pool: Arc<ConnectionPool>,
         process: Child,
         profile: Profile,
-        port: u16,
         session_id: SessionId,
         initial_tab_id: TabId,
     ) -> Self {
@@ -203,16 +202,21 @@ impl Window {
         let mut tabs = FxHashMap::default();
         tabs.insert(initial_tab_id, initial_tab);
 
-        debug!(uuid = %uuid, session_id = %session_id, tab_id = %initial_tab_id, port, "Window created");
+        debug!(
+            uuid = %uuid,
+            session_id = %session_id,
+            tab_id = %initial_tab_id,
+            port = pool.port(),
+            "Window created"
+        );
 
         Self {
             inner: Arc::new(WindowInner {
                 uuid,
                 session_id,
                 process: Mutex::new(ProcessGuard::new(process)),
-                connection,
+                pool,
                 profile,
-                port,
                 tabs: Mutex::new(tabs),
                 initial_tab_id,
             }),
@@ -239,11 +243,11 @@ impl Window {
         &self.inner.uuid
     }
 
-    /// Returns the WebSocket port for this window.
+    /// Returns the WebSocket port (shared across all windows).
     #[inline]
     #[must_use]
     pub fn port(&self) -> u16 {
-        self.inner.port
+        self.inner.pool.port()
     }
 
     /// Returns the Firefox process ID.
@@ -267,9 +271,14 @@ impl Window {
     #[allow(clippy::await_holding_lock)]
     pub async fn close(&self) -> Result<()> {
         debug!(uuid = %self.inner.uuid, "Closing window");
-        self.inner.connection.shutdown();
+
+        // Remove from pool first
+        self.inner.pool.remove(self.inner.session_id);
+
+        // Kill process
         let mut guard = self.inner.process.lock();
         guard.kill().await?;
+
         info!(uuid = %self.inner.uuid, "Window closed");
         Ok(())
     }
@@ -408,10 +417,10 @@ impl Window {
 // ============================================================================
 
 impl Window {
-    /// Sends a command via WebSocket and waits for the response.
+    /// Sends a command via the connection pool and waits for the response.
     pub(crate) async fn send_command(&self, command: Command) -> Result<Response> {
         let request = Request::new(self.inner.initial_tab_id, FrameId::main(), command);
-        self.inner.connection.send(request).await
+        self.inner.pool.send(self.inner.session_id, request).await
     }
 }
 
@@ -426,7 +435,7 @@ impl Window {
 /// ```no_run
 /// # use firefox_webdriver::Driver;
 /// # async fn example() -> firefox_webdriver::Result<()> {
-/// # let driver = Driver::builder().binary("/usr/bin/firefox").extension("./ext").build()?;
+/// # let driver = Driver::builder().binary("/usr/bin/firefox").extension("./ext").build().await?;
 /// let window = driver.window()
 ///     .headless()
 ///     .window_size(1920, 1080)

@@ -99,6 +99,19 @@ impl SessionId {
         Self(non_zero)
     }
 
+    /// Creates a SessionId from a u32 value.
+    ///
+    /// Used for parsing session IDs from READY messages.
+    ///
+    /// # Returns
+    ///
+    /// `Some(SessionId)` if `id > 0`, `None` otherwise.
+    #[inline]
+    #[must_use]
+    pub fn from_u32(id: u32) -> Option<Self> {
+        NonZeroU32::new(id).map(Self)
+    }
+
     /// Returns the underlying `u32` value.
     #[inline]
     #[must_use]
@@ -542,6 +555,13 @@ mod tests {
         let id = SessionId::next();
         let display = id.to_string();
         assert!(!display.is_empty());
+    }
+
+    #[test]
+    fn test_session_id_from_u32() {
+        assert!(SessionId::from_u32(0).is_none());
+        assert!(SessionId::from_u32(1).is_some());
+        assert_eq!(SessionId::from_u32(42).unwrap().as_u32(), 42);
     }
 
     #[test]

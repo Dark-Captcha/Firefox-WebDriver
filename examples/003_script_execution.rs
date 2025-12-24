@@ -17,7 +17,7 @@ mod common;
 // Imports
 // ============================================================================
 
-use common::{Args, EXTENSION_PATH, FIREFOX_BINARY};
+use common::{Args, extension_path, firefox_binary};
 use firefox_webdriver::{Driver, Result};
 
 // ============================================================================
@@ -51,9 +51,10 @@ async fn run(args: Args) -> Result<()> {
     println!("[Setup] Creating driver and window...");
 
     let driver = Driver::builder()
-        .binary(FIREFOX_BINARY)
-        .extension(EXTENSION_PATH)
-        .build()?;
+        .binary(firefox_binary())
+        .extension(extension_path())
+        .build()
+        .await?;
 
     let window = driver.window().window_size(1280, 720).spawn().await?;
     let tab = window.tab();

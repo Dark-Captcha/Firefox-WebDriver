@@ -537,7 +537,11 @@ impl Element {
 
         let request = Request::new(self.inner.tab_id, self.inner.frame_id, command);
 
-        window.inner.connection.send(request).await
+        window
+            .inner
+            .pool
+            .send(window.inner.session_id, request)
+            .await
     }
 }
 

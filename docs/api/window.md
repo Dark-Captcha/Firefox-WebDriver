@@ -4,7 +4,7 @@ Manages a Firefox browser window.
 
 ## Overview
 
-Window owns a Firefox process, WebSocket connection, and profile directory. When Window is dropped or closed, the Firefox process is killed.
+Window owns a Firefox process and profile directory, and holds a reference to the shared ConnectionPool for WebSocket communication. When Window is dropped or closed, the Firefox process is killed and the session is removed from the pool.
 
 ## Creating Window
 

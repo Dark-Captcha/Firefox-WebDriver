@@ -21,7 +21,8 @@
 //! let driver = Driver::builder()
 //!     .binary("/usr/bin/firefox")
 //!     .extension("./extension")
-//!     .build()?;
+//!     .build()
+//!     .await?;
 //!
 //! let window = driver.window().headless().spawn().await?;
 //! let tab = window.tab();

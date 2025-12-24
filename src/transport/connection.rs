@@ -117,6 +117,16 @@ pub struct Connection {
     event_handler: Arc<Mutex<Option<EventHandler>>>,
 }
 
+impl Clone for Connection {
+    fn clone(&self) -> Self {
+        Self {
+            command_tx: self.command_tx.clone(),
+            correlation: Arc::clone(&self.correlation),
+            event_handler: Arc::clone(&self.event_handler),
+        }
+    }
+}
+
 impl Connection {
     /// Creates a new connection from a WebSocket stream.
     ///
@@ -453,7 +463,12 @@ impl Connection {
 
 impl Drop for Connection {
     fn drop(&mut self) {
-        self.shutdown();
+        // Only shutdown if this is the last reference
+        // Since command_tx is cloned, we can check if we're the only sender
+        // Actually, we can't easily check this, so we should NOT auto-shutdown on drop
+        // The pool.remove() will explicitly call shutdown()
+        //
+        // DO NOT call shutdown here - it breaks cloned connections!
     }
 }
 
