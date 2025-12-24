@@ -45,11 +45,9 @@ Each Window owns:
 
 ## Installation
 
-> **Note:** The crate will be available on crates.io soon. For now, use the Git dependency.
-
 ```toml
 [dependencies]
-firefox-webdriver = { git = "https://github.com/Dark-Captcha/Firefox-WebDriver" }
+firefox-webdriver = "0.1"
 tokio = { version = "1.48", features = ["full"] }
 ```
 
