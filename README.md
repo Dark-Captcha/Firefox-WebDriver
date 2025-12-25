@@ -40,14 +40,14 @@ Each Window owns:
 ## Requirements
 
 - Rust 1.92+
-- Firefox 148+
+- Firefox 148+ (Linux users: [download patched Firefox](https://github.com/Dark-Captcha/Firefox-WebDriver-Patches/releases))
 - tokio 1.48+
 
 ## Installation
 
 ```toml
 [dependencies]
-firefox-webdriver = "0.1.1"
+firefox-webdriver = "0.1.2"
 tokio = { version = "1.48", features = ["full"] }
 ```
 

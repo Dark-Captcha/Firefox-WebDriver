@@ -5,9 +5,17 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.2] - 2025-12-26
+
 ### Fixed
 
 - Fixed Connection drop causing premature shutdown when cloned connections were dropped
+- Fixed ARCHITECTURE.md version mismatch (was 2.0.0, now matches Cargo.toml)
+- Fixed Section 1.4 reference in `src/identifiers.rs` (was incorrectly 1.7)
+- Added missing `SessionNotFound` error to ARCHITECTURE.md §6.2
+- Added missing `responseStarted`, `responseCompleted` network events to documentation
+- Updated extension filenames to match current version
+- Added Firefox download link for Linux users in README.md
 
 ### Removed
 
@@ -193,6 +201,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - UUID-based element references (undetectable)
 - Per-window process isolation
 
-[Unreleased]: https://github.com/Dark-Captcha/Firefox-WebDriver/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Dark-Captcha/Firefox-WebDriver/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/Dark-Captcha/Firefox-WebDriver/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Dark-Captcha/Firefox-WebDriver/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Dark-Captcha/Firefox-WebDriver/releases/tag/v0.1.0

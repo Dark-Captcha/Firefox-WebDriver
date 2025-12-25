@@ -1,6 +1,6 @@
 # Firefox WebDriver Protocol Specification
 
-> **Version:** 2.0.0 | **Status:** Active | **Updated:** 2025-12-23
+> **Version:** 0.1.2 | **Status:** Active | **Updated:** 2025-12-26
 
 Bidirectional browser automation protocol for Firefox. Extension-based, event-driven, undetectable.
 
@@ -418,8 +418,10 @@ mousemove → mousedown → mouseup → click
 | `network.beforeRequestSent` | Request about to send  | Yes            |
 | `network.requestHeaders`    | Request headers        | Yes            |
 | `network.requestBody`       | Request body (logging) | No             |
+| `network.responseStarted`   | Response headers recv  | No             |
 | `network.responseHeaders`   | Response headers       | Yes            |
 | `network.responseBody`      | Response body          | Yes            |
+| `network.responseCompleted` | Response completed     | No             |
 
 **EventReply Actions:**
 
@@ -515,6 +517,7 @@ let element = tab.wait_for_element("#login").await?;
 | `script error`      | JavaScript execution error |
 | `timeout`           | Operation timed out        |
 | `connection closed` | WebSocket closed           |
+| `session not found` | Session ID not in pool     |
 | `unknown error`     | Unexpected error           |
 
 ### 6.2. Rust Error Types
@@ -539,6 +542,7 @@ pub enum Error {
     Timeout { operation: String, timeout_ms: u64 },
     RequestTimeout { request_id: RequestId, timeout_ms: u64 },
     InterceptNotFound { intercept_id: String },
+    SessionNotFound { session_id: SessionId },
     Io(IoError),
     Json(serde_json::Error),
     WebSocket(WsError),
@@ -675,8 +679,10 @@ registry.register("element.getProperty", handleGetProperty);
 | network         | `beforeRequestSent`                                                 | Yes            |
 | network         | `requestHeaders`                                                    | Yes            |
 | network         | `requestBody`                                                       | No             |
+| network         | `responseStarted`                                                   | No             |
 | network         | `responseHeaders`                                                   | Yes            |
 | network         | `responseBody`                                                      | Yes            |
+| network         | `responseCompleted`                                                 | No             |
 
 ### A.3. Rust API Quick Reference
 

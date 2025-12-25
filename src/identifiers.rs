@@ -5,7 +5,7 @@
 //!
 //! # ID System
 //!
-//! From ARCHITECTURE.md Section 1.7:
+//! From ARCHITECTURE.md Section 1.4:
 //!
 //! | ID | Type | Source | Purpose |
 //! |----|------|--------|---------|

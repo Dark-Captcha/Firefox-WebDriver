@@ -16,7 +16,7 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-firefox_webdriver = "0.1"
+firefox_webdriver = "0.1.2"
 tokio = { version = "1", features = ["full"] }
 ```
 

@@ -29,7 +29,7 @@ pub fn firefox_binary() -> PathBuf {
 pub fn extension_path() -> PathBuf {
     dirs::home_dir()
         .expect("Could not determine home directory")
-        .join("Documents/Firefox-WebDriver-Extension/firefox-webdriver-extension-0.1.0.xpi")
+        .join("Documents/Firefox-WebDriver-Extension/firefox-webdriver-extension-0.1.2.xpi")
 }
 
 // ============================================================================
