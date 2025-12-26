@@ -209,8 +209,10 @@ pub enum ParsedEvent {
 
     /// Element added to DOM.
     ElementAdded {
-        /// CSS selector that matched.
-        selector: String,
+        /// Selector strategy (css, xpath, text, etc.).
+        strategy: String,
+        /// Selector value.
+        value: String,
         /// Element ID.
         element_id: String,
         /// Subscription ID.
@@ -324,7 +326,8 @@ impl Event {
             },
 
             "element.added" => ParsedEvent::ElementAdded {
-                selector: self.get_string("selector"),
+                strategy: self.get_string("strategy"),
+                value: self.get_string("value"),
                 element_id: self.get_string("elementId"),
                 subscription_id: self.get_string("subscriptionId"),
                 tab_id: self.get_u32("tabId"),
@@ -506,7 +509,8 @@ mod tests {
             "type": "event",
             "method": "element.added",
             "params": {
-                "selector": "#login-form",
+                "strategy": "css",
+                "value": "#login-form",
                 "elementId": "elem-123",
                 "subscriptionId": "sub-456",
                 "tabId": 1,
@@ -519,11 +523,13 @@ mod tests {
 
         match parsed {
             ParsedEvent::ElementAdded {
-                selector,
+                strategy,
+                value,
                 element_id,
                 ..
             } => {
-                assert_eq!(selector, "#login-form");
+                assert_eq!(strategy, "css");
+                assert_eq!(value, "#login-form");
                 assert_eq!(element_id, "elem-123");
             }
             _ => panic!("unexpected parsed event type"),

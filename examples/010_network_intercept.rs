@@ -308,7 +308,7 @@ async fn test_intercept_stateful(tab: &Tab) -> Result<()> {
     let intercept_id = tab
         .intercept_request(move |_req| {
             let n = cc.fetch_add(1, Ordering::SeqCst);
-            if n % 2 == 0 {
+            if n.is_multiple_of(2) {
                 RequestAction::block()
             } else {
                 RequestAction::allow()

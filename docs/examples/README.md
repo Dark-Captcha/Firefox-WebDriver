@@ -18,7 +18,7 @@ cargo run --example 001_basic_launch -- --clean    # Clean profile (001 only)
 | `001_basic_launch.rs`        |     ⭐     | Driver setup, window spawning, profile management    |
 | `002_navigation.rs`          |     ⭐     | Navigate, back, forward, reload, get URL/title       |
 | `003_script_execution.rs`    |     ⭐     | Sync/async JavaScript execution                      |
-| `004_element_query.rs`       |    ⭐⭐    | Find elements, properties, attributes, nested search |
+| `004_element_query.rs`       |    ⭐⭐    | Find elements with By strategies, nested search      |
 | `005_element_interaction.rs` |    ⭐⭐    | Click, type, focus, blur, isTrusted events           |
 | `006_storage.rs`             |    ⭐⭐    | Cookies, localStorage, sessionStorage                |
 | `007_frame_switching.rs`     |   ⭐⭐⭐   | iframe navigation, frame hierarchy                   |
@@ -26,6 +26,11 @@ cargo run --example 001_basic_launch -- --clean    # Clean profile (001 only)
 | `009_proxy.rs`               |   ⭐⭐⭐   | HTTP/SOCKS5 proxy, per-tab/window configuration      |
 | `010_network_intercept.rs`   |  ⭐⭐⭐⭐  | Block rules, request/response interception           |
 | `011_canvas_fingerprint.rs`  |  ⭐⭐⭐⭐  | Canvas randomization verification                    |
+| `012_multi_window.rs`        |   ⭐⭐⭐   | Multiple windows, parallel automation                |
+| `013_screenshot.rs`          |    ⭐⭐    | Page and element screenshots, PNG/JPEG               |
+| `014_forms.rs`               |    ⭐⭐    | Checkboxes, radio buttons, dropdowns                 |
+| `015_keyboard.rs`            |    ⭐⭐    | Keyboard input, special keys, modifiers              |
+| `016_mouse.rs`               |    ⭐⭐    | Mouse actions, double-click, hover, drag             |
 
 ## Shared Utilities
 
@@ -40,13 +45,13 @@ All examples use `common.rs` which provides:
 ## Quick Start Example
 
 ```rust
-use firefox_webdriver::{Driver, Result};
+use firefox_webdriver::{Driver, By, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let driver = Driver::builder()
         .binary("./bin/firefox")
-        .extension("firefox-webdriver-extension-0.1.2.xpi")
+        .extension("firefox-webdriver-extension-0.1.3.xpi")
         .build().await?;
 
     let window = driver.window()
@@ -57,8 +62,12 @@ async fn main() -> Result<()> {
     let tab = window.tab();
     tab.goto("https://example.com").await?;
 
-    let title = tab.get_title().await?;
-    println!("Title: {}", title);
+    // Find element using By strategies
+    let heading = tab.find_element(By::Tag("h1")).await?;
+    println!("Heading: {}", heading.get_text().await?);
+
+    // Screenshot
+    tab.save_screenshot("example.png").await?;
 
     driver.close().await?;
     Ok(())

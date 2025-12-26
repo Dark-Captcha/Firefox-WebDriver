@@ -18,6 +18,8 @@ mod common;
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+
+use firefox_webdriver::By;
 use std::time::Duration;
 
 use tokio::time::sleep;
@@ -129,7 +131,7 @@ async fn run(args: Args) -> Result<()> {
     println!("    Element will appear in ~2 seconds...");
 
     let start = std::time::Instant::now();
-    let element = tab.wait_for_element("#dynamic-element").await?;
+    let element = tab.wait_for_element(By::css("#dynamic-element")).await?;
     let elapsed = start.elapsed();
 
     println!("    ✓ Element found in {elapsed:?}");
@@ -148,7 +150,7 @@ async fn run(args: Args) -> Result<()> {
     let item_count_clone = Arc::clone(&item_count);
 
     let subscription_id = tab
-        .on_element_added(".dynamic-item", move |_element| {
+        .on_element_added(By::Css(".dynamic-item".to_string()), move |_element| {
             let count = item_count_clone.fetch_add(1, Ordering::SeqCst) + 1;
             println!("    → Callback: Item #{count} added!");
         })
@@ -172,7 +174,7 @@ async fn run(args: Args) -> Result<()> {
     println!("    Waiting 2s for non-existent element...");
 
     let result = tab
-        .wait_for_element_timeout("#nonexistent-element", Duration::from_secs(2))
+        .wait_for_element_timeout(By::css("#nonexistent-element"), Duration::from_secs(2))
         .await;
 
     match result {

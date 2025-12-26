@@ -1,6 +1,6 @@
 # Firefox WebDriver Protocol Specification
 
-> **Version:** 0.1.2 | **Status:** Active | **Updated:** 2025-12-26
+> **Version:** 0.1.3 | **Status:** Active | **Updated:** 2025-12-26
 
 Bidirectional browser automation protocol for Firefox. Extension-based, event-driven, undetectable.
 
@@ -306,24 +306,25 @@ Content script validates localhost URL, forwards to background.
 
 ### 4.2. browsingContext Module
 
-| Command                                | Description           |
-| -------------------------------------- | --------------------- |
-| `browsingContext.navigate`             | Navigate to URL       |
-| `browsingContext.reload`               | Reload page           |
-| `browsingContext.goBack`               | Navigate back         |
-| `browsingContext.goForward`            | Navigate forward      |
-| `browsingContext.getTitle`             | Get page title        |
-| `browsingContext.getUrl`               | Get current URL       |
-| `browsingContext.newTab`               | Create new tab        |
-| `browsingContext.closeTab`             | Close tab             |
-| `browsingContext.focusTab`             | Focus tab             |
-| `browsingContext.focusWindow`          | Focus window          |
-| `browsingContext.switchToFrame`        | Switch by element     |
-| `browsingContext.switchToFrameByIndex` | Switch by index       |
-| `browsingContext.switchToFrameByUrl`   | Switch by URL pattern |
-| `browsingContext.switchToParentFrame`  | Switch to parent      |
-| `browsingContext.getFrameCount`        | Get child frame count |
-| `browsingContext.getAllFrames`         | Get all frames info   |
+| Command                                | Description             |
+| -------------------------------------- | ----------------------- |
+| `browsingContext.navigate`             | Navigate to URL         |
+| `browsingContext.reload`               | Reload page             |
+| `browsingContext.goBack`               | Navigate back           |
+| `browsingContext.goForward`            | Navigate forward        |
+| `browsingContext.getTitle`             | Get page title          |
+| `browsingContext.getUrl`               | Get current URL         |
+| `browsingContext.newTab`               | Create new tab          |
+| `browsingContext.closeTab`             | Close tab               |
+| `browsingContext.focusTab`             | Focus tab               |
+| `browsingContext.focusWindow`          | Focus window            |
+| `browsingContext.switchToFrame`        | Switch by element       |
+| `browsingContext.switchToFrameByIndex` | Switch by index         |
+| `browsingContext.switchToFrameByUrl`   | Switch by URL pattern   |
+| `browsingContext.switchToParentFrame`  | Switch to parent        |
+| `browsingContext.getFrameCount`        | Get child frame count   |
+| `browsingContext.getAllFrames`         | Get all frames info     |
+| `browsingContext.captureScreenshot`    | Capture tab screenshot  |
 
 **Events:**
 
@@ -336,19 +337,37 @@ Content script validates localhost URL, forwards to background.
 
 ### 4.3. element Module
 
-| Command                    | Description                   |
-| -------------------------- | ----------------------------- |
-| `element.find`             | Find single element           |
-| `element.findAll`          | Find all elements             |
-| `element.getProperty`      | Get `element[name]`           |
-| `element.setProperty`      | Set `element[name] = value`   |
-| `element.callMethod`       | Call `element[name](...args)` |
-| `element.subscribe`        | Watch for element appearance  |
-| `element.unsubscribe`      | Stop watching                 |
-| `element.watchRemoval`     | Watch element removal         |
-| `element.unwatchRemoval`   | Stop watching removal         |
-| `element.watchAttribute`   | Watch attribute changes       |
-| `element.unwatchAttribute` | Stop watching attributes      |
+| Command                    | Description                        |
+| -------------------------- | ---------------------------------- |
+| `element.find`             | Find single element (CSS)          |
+| `element.findBy`           | Find element with strategy         |
+| `element.findAll`          | Find all elements (CSS)            |
+| `element.findAllBy`        | Find all elements with strategy    |
+| `element.getProperty`      | Get `element[name]`                |
+| `element.setProperty`      | Set `element[name] = value`        |
+| `element.callMethod`       | Call `element[name](...args)`      |
+| `element.subscribe`        | Watch for element appearance       |
+| `element.unsubscribe`      | Stop watching                      |
+| `element.watchRemoval`     | Watch element removal              |
+| `element.unwatchRemoval`   | Stop watching removal              |
+| `element.watchAttribute`   | Watch attribute changes            |
+| `element.unwatchAttribute` | Stop watching attributes           |
+| `element.captureScreenshot`| Capture element screenshot         |
+
+**Find Strategies (for `findBy`/`findAllBy`):**
+
+| Strategy        | Description                    | Example                          |
+| --------------- | ------------------------------ | -------------------------------- |
+| `css`           | CSS selector (default)         | `#login`, `.btn`                 |
+| `xpath`         | XPath expression               | `//button[@type='submit']`       |
+| `text`          | Exact text content             | `Submit`                         |
+| `partialText`   | Partial text content           | `Read more`                      |
+| `id`            | Element ID                     | `username`                       |
+| `tag`           | Tag name                       | `button`                         |
+| `name`          | Name attribute                 | `email`                          |
+| `class`         | Class name                     | `btn-primary`                    |
+| `linkText`      | Link text (for `<a>`)          | `Home`                           |
+| `partialLinkText` | Partial link text            | `Read`                           |
 
 **Events:**
 
@@ -659,16 +678,16 @@ registry.register("element.getProperty", handleGetProperty);
 
 ### A.1. All Commands
 
-| Module          | Command                                                                                                                                                                                                                                   |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| session         | `status`, `stealLogs`                                                                                                                                                                                                                     |
-| browsingContext | `navigate`, `reload`, `goBack`, `goForward`, `getTitle`, `getUrl`, `newTab`, `closeTab`, `focusTab`, `focusWindow`, `switchToFrame`, `switchToFrameByIndex`, `switchToFrameByUrl`, `switchToParentFrame`, `getFrameCount`, `getAllFrames` |
-| element         | `find`, `findAll`, `getProperty`, `setProperty`, `callMethod`, `subscribe`, `unsubscribe`, `watchRemoval`, `unwatchRemoval`, `watchAttribute`, `unwatchAttribute`                                                                         |
-| script          | `evaluate`, `evaluateAsync`, `addPreloadScript`, `removePreloadScript`                                                                                                                                                                    |
-| input           | `typeKey`, `typeText`, `mouseClick`, `mouseMove`, `mouseDown`, `mouseUp`                                                                                                                                                                  |
-| network         | `addIntercept`, `removeIntercept`, `setBlockRules`, `clearBlockRules`                                                                                                                                                                     |
-| proxy           | `setWindowProxy`, `clearWindowProxy`, `setTabProxy`, `clearTabProxy`                                                                                                                                                                      |
-| storage         | `getCookie`, `setCookie`, `deleteCookie`, `getAllCookies`                                                                                                                                                                                 |
+| Module          | Command                                                                                                                                                                                                                                                        |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| session         | `status`, `stealLogs`                                                                                                                                                                                                                                          |
+| browsingContext | `navigate`, `reload`, `goBack`, `goForward`, `getTitle`, `getUrl`, `newTab`, `closeTab`, `focusTab`, `focusWindow`, `switchToFrame`, `switchToFrameByIndex`, `switchToFrameByUrl`, `switchToParentFrame`, `getFrameCount`, `getAllFrames`, `captureScreenshot` |
+| element         | `find`, `findBy`, `findAll`, `findAllBy`, `getProperty`, `setProperty`, `callMethod`, `subscribe`, `unsubscribe`, `watchRemoval`, `unwatchRemoval`, `watchAttribute`, `unwatchAttribute`, `captureScreenshot`                                                  |
+| script          | `evaluate`, `evaluateAsync`, `addPreloadScript`, `removePreloadScript`                                                                                                                                                                                         |
+| input           | `typeKey`, `typeText`, `mouseClick`, `mouseMove`, `mouseDown`, `mouseUp`                                                                                                                                                                                       |
+| network         | `addIntercept`, `removeIntercept`, `setBlockRules`, `clearBlockRules`                                                                                                                                                                                          |
+| proxy           | `setWindowProxy`, `clearWindowProxy`, `setTabProxy`, `clearTabProxy`                                                                                                                                                                                           |
+| storage         | `getCookie`, `setCookie`, `deleteCookie`, `getAllCookies`                                                                                                                                                                                                      |
 
 ### A.2. All Events
 

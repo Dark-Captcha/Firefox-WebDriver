@@ -16,7 +16,7 @@ use std::io::Write;
 use std::time::{Duration, Instant};
 
 use common::{extension_path, firefox_binary};
-use firefox_webdriver::{Driver, Result, Window};
+use firefox_webdriver::{By, Driver, Result, Window};
 
 // ============================================================================
 // Configuration
@@ -179,7 +179,7 @@ async fn run_benchmark(window_count: usize, duration_secs: u64) -> Result<BenchR
             .map(|(i, w)| async move {
                 let tab = w.tab();
                 let random_text = generate_random_text(i as u64 + iteration);
-                let h1 = tab.find_element("h1").await?;
+                let h1 = tab.find_element(By::css("h1")).await?;
                 h1.set_property("textContent", serde_json::Value::String(random_text))
                     .await?;
                 let _text = h1.get_text().await?;

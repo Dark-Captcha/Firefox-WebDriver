@@ -18,13 +18,13 @@ mod common;
 use std::time::{Duration, Instant};
 
 use common::{Args, extension_path, firefox_binary};
-use firefox_webdriver::{Driver, Result, Window};
+use firefox_webdriver::{By, Driver, Result, Window};
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const WINDOW_COUNT: usize = 100;
+const WINDOW_COUNT: usize = 50;
 const TEST_DURATION: Duration = Duration::from_secs(15);
 const URL: &str = "https://example.com";
 
@@ -125,7 +125,7 @@ async fn run(_args: Args) -> Result<()> {
                 tab.execute_script(&script).await?;
 
                 // Also read it back to verify
-                let h1 = tab.find_element("h1").await?;
+                let h1 = tab.find_element(By::css("h1")).await?;
                 let _text = h1.get_text().await?;
 
                 Ok::<_, firefox_webdriver::Error>(())
@@ -142,7 +142,7 @@ async fn run(_args: Args) -> Result<()> {
         }
 
         // Progress every 10 iterations
-        if iteration % 10 == 0 {
+        if iteration.is_multiple_of(10) {
             let elapsed = test_start.elapsed().as_secs();
             let ops = iteration * WINDOW_COUNT as u64;
             println!(

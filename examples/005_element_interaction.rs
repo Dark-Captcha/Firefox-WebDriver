@@ -23,7 +23,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 use common::{Args, extension_path, firefox_binary};
-use firefox_webdriver::{Driver, Result};
+use firefox_webdriver::{By, Driver, Result};
 
 // ============================================================================
 // Constants
@@ -121,7 +121,7 @@ async fn run(args: Args) -> Result<()> {
 
     println!("[1] type_text: Type into input field");
 
-    let input = tab.find_element("#test-input").await?;
+    let input = tab.find_element(By::css("#test-input")).await?;
     input.focus().await?;
     input.type_text("Hello World").await?;
 
@@ -177,7 +177,7 @@ async fn run(args: Args) -> Result<()> {
 
     tab.execute_script(CLICK_HANDLER_SCRIPT).await?;
 
-    let button = tab.find_element("#test-btn").await?;
+    let button = tab.find_element(By::css("#test-btn")).await?;
     let text_before = button.get_text().await?;
     println!("    Button text before: \"{text_before}\"");
 

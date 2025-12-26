@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use firefox_webdriver::By;
 use tokio::runtime::Runtime;
 
 // ============================================================================
@@ -228,7 +229,7 @@ async fn run_sustained_test(window_count: usize, duration_secs: u64) -> BenchRes
             .map(|(i, w)| async move {
                 let tab = w.tab();
                 let random_text = generate_random_text(i as u64 + iteration);
-                let h1 = tab.find_element("h1").await?;
+                let h1 = tab.find_element(By::Css("h1".to_string())).await?;
                 h1.set_property("textContent", serde_json::Value::String(random_text))
                     .await?;
                 let _text = h1.get_text().await?;
@@ -280,6 +281,7 @@ fn generate_random_text(seed: u64) -> String {
 // ============================================================================
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct BenchResult {
     spawn_time_ms: u64,
     total_ops: u64,

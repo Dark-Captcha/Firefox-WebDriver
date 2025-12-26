@@ -1,8 +1,8 @@
 //! Element querying demonstration.
 //!
 //! Demonstrates:
-//! - Find single element (find_element)
-//! - Find multiple elements (find_elements)
+//! - Find single element with By selectors
+//! - Find multiple elements with By selectors
 //! - Get element properties and attributes
 //! - Nested element search
 //! - Error handling for missing elements
@@ -19,7 +19,7 @@ mod common;
 // ============================================================================
 
 use common::{Args, extension_path, firefox_binary};
-use firefox_webdriver::{Driver, Result};
+use firefox_webdriver::{By, Driver, Result};
 
 // ============================================================================
 // Constants
@@ -72,8 +72,8 @@ async fn run(args: Args) -> Result<()> {
     // Find single element
     // ========================================================================
 
-    println!("[1] find_element('h1')");
-    let h1 = tab.find_element("h1").await?;
+    println!("[1] find_element(By::tag(\"h1\"))");
+    let h1 = tab.find_element(By::tag("h1")).await?;
     println!("    ✓ Found element: {}", h1.id());
 
     let text = h1.get_text().await?;
@@ -85,8 +85,8 @@ async fn run(args: Args) -> Result<()> {
     // Find link element
     // ========================================================================
 
-    println!("[2] find_element('a')");
-    let link = tab.find_element("a").await?;
+    println!("[2] find_element(By::tag(\"a\"))");
+    let link = tab.find_element(By::tag("a")).await?;
     println!("    ✓ Found link: {}", link.id());
     println!();
 
@@ -94,8 +94,8 @@ async fn run(args: Args) -> Result<()> {
     // Find multiple elements
     // ========================================================================
 
-    println!("[3] find_elements('p')");
-    let paragraphs = tab.find_elements("p").await?;
+    println!("[3] find_elements(By::tag(\"p\"))");
+    let paragraphs = tab.find_elements(By::tag("p")).await?;
     println!("    ✓ Found {} paragraph(s)", paragraphs.len());
 
     for (i, p) in paragraphs.iter().enumerate() {
@@ -131,12 +131,12 @@ async fn run(args: Args) -> Result<()> {
 
     println!("[5] Nested element search");
 
-    let body = tab.find_element("body").await?;
+    let body = tab.find_element(By::tag("body")).await?;
     println!("    ✓ Found body");
 
-    let nested_h1 = body.find_element("h1").await?;
+    let nested_h1 = body.find_element(By::tag("h1")).await?;
     let nested_text = nested_h1.get_text().await?;
-    println!("    ✓ body.find('h1') text: '{nested_text}'");
+    println!("    ✓ body.find_element(By::tag(\"h1\")) text: '{nested_text}'");
     println!();
 
     // ========================================================================
@@ -145,7 +145,9 @@ async fn run(args: Args) -> Result<()> {
 
     println!("[6] Error handling: element not found");
 
-    let result = tab.find_element("#nonexistent-element-12345").await;
+    let result = tab
+        .find_element(By::css("#nonexistent-element-12345"))
+        .await;
     match result {
         Ok(_) => println!("    ✗ Should have failed!"),
         Err(e) => println!("    ✓ Correctly failed: {e}"),

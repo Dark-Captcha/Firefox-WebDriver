@@ -16,14 +16,14 @@ Add to `Cargo.toml`:
 
 ```toml
 [dependencies]
-firefox_webdriver = "0.1.2"
+firefox_webdriver = "0.1.3"
 tokio = { version = "1", features = ["full"] }
 ```
 
 ## First Script
 
 ```rust
-use firefox_webdriver::{Driver, Result};
+use firefox_webdriver::{Driver, By, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -51,8 +51,8 @@ async fn main() -> Result<()> {
     let title = tab.get_title().await?;
     println!("Page title: {}", title);
 
-    // Find an Element and get text
-    let heading = tab.find_element("h1").await?;
+    // Find an Element using By strategies
+    let heading = tab.find_element(By::Tag("h1")).await?;
     let text = heading.get_text().await?;
     println!("Heading: {}", text);
 
@@ -105,4 +105,6 @@ Each Window owns:
 | [Tab API](./api/tab.md)                                      | Navigation, scripts, elements |
 | [Element API](./api/element.md)                              | Element interaction           |
 | [Element Interaction Guide](./guides/element-interaction.md) | Finding and clicking elements |
+| [Forms Guide](./guides/forms.md)                             | Checkboxes, dropdowns, inputs |
+| [Screenshot Guide](./guides/screenshot.md)                   | Page and element screenshots  |
 | [Waiting Guide](./guides/waiting.md)                         | Event-driven waiting          |

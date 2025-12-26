@@ -194,8 +194,119 @@ if button.is_displayed().await? && button.is_enabled().await? {
 
 ---
 
+## Using By Strategies
+
+### Available Strategies
+
+```rust
+use firefox_webdriver::By;
+
+// CSS selector (default, most common)
+let btn = tab.find_element(By::Css("#submit")).await?;
+
+// By ID (shorthand for #id)
+let form = tab.find_element(By::Id("login-form")).await?;
+
+// By XPath
+let btn = tab.find_element(By::XPath("//button[@type='submit']")).await?;
+
+// By text content (exact match)
+let link = tab.find_element(By::Text("Click here")).await?;
+
+// By partial text
+let link = tab.find_element(By::PartialText("Click")).await?;
+
+// By tag name
+let inputs = tab.find_elements(By::Tag("input")).await?;
+
+// By name attribute
+let email = tab.find_element(By::Name("email")).await?;
+
+// By class name
+let btn = tab.find_element(By::Class("btn-primary")).await?;
+
+// By link text (for <a> elements)
+let link = tab.find_element(By::LinkText("Home")).await?;
+```
+
+### Strategy Reference
+
+| Strategy              | Description            | Example                       |
+| --------------------- | ---------------------- | ----------------------------- |
+| `By::Css`             | CSS selector           | `By::Css("#login")`           |
+| `By::XPath`           | XPath expression       | `By::XPath("//button")`       |
+| `By::Text`            | Exact text content     | `By::Text("Submit")`          |
+| `By::PartialText`     | Partial text content   | `By::PartialText("Read")`     |
+| `By::Id`              | Element ID             | `By::Id("username")`          |
+| `By::Tag`             | Tag name               | `By::Tag("button")`           |
+| `By::Name`            | Name attribute         | `By::Name("email")`           |
+| `By::Class`           | Class name             | `By::Class("btn-primary")`    |
+| `By::LinkText`        | Link text (`<a>`)      | `By::LinkText("Home")`        |
+| `By::PartialLinkText` | Partial link text      | `By::PartialLinkText("Read")` |
+
+---
+
+## Mouse Actions
+
+### Double Click
+
+```rust
+let button = tab.find_element(By::Css("button")).await?;
+button.double_click().await?;
+```
+
+### Right Click (Context Menu)
+
+```rust
+let element = tab.find_element(By::Css("div.target")).await?;
+element.context_click().await?;
+```
+
+### Hover
+
+```rust
+let menu = tab.find_element(By::Css(".dropdown")).await?;
+menu.hover().await?;
+// Now dropdown should be visible
+let item = tab.find_element(By::Css(".dropdown-item")).await?;
+item.click().await?;
+```
+
+---
+
+## Scrolling
+
+### Scroll Element Into View
+
+```rust
+let element = tab.find_element(By::Css("#footer")).await?;
+element.scroll_into_view().await?; // Smooth animation
+// or
+element.scroll_into_view_instant().await?; // Instant
+```
+
+### Page Scrolling
+
+```rust
+// Scroll down 500 pixels
+tab.scroll_by(0, 500).await?;
+
+// Scroll to specific position
+tab.scroll_to(0, 1000).await?;
+
+// Scroll to top/bottom
+tab.scroll_to_top().await?;
+tab.scroll_to_bottom().await?;
+
+// Get current scroll position
+let (x, y) = tab.get_scroll_position().await?;
+```
+
+---
+
 ## See Also
 
 - [Element API](../api/element.md) - Element methods
 - [Waiting Guide](./waiting.md) - Waiting for elements
 - [Tab API](../api/tab.md) - Tab methods
+- [Forms Guide](./forms.md) - Form interaction patterns

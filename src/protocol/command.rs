@@ -137,6 +137,16 @@ pub enum BrowsingContextCommand {
     /// Get all frames info.
     #[serde(rename = "browsingContext.getAllFrames")]
     GetAllFrames,
+
+    /// Capture screenshot of visible tab.
+    #[serde(rename = "browsingContext.captureScreenshot")]
+    CaptureScreenshot {
+        /// Image format: "png" or "jpeg".
+        format: String,
+        /// Quality for JPEG (0-100), ignored for PNG.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        quality: Option<u8>,
+    },
 }
 
 // ============================================================================
@@ -147,21 +157,25 @@ pub enum BrowsingContextCommand {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "method", content = "params")]
 pub enum ElementCommand {
-    /// Find single element by CSS selector.
+    /// Find single element by strategy.
     #[serde(rename = "element.find")]
     Find {
-        /// CSS selector.
-        selector: String,
+        /// Selector strategy: "css", "xpath", "text", "partialText", "id", "tag", "name", "class", "linkText", "partialLinkText".
+        strategy: String,
+        /// Selector value.
+        value: String,
         /// Parent element ID (optional).
         #[serde(rename = "parentId", skip_serializing_if = "Option::is_none")]
         parent_id: Option<ElementId>,
     },
 
-    /// Find all elements by CSS selector.
+    /// Find all elements by strategy.
     #[serde(rename = "element.findAll")]
     FindAll {
-        /// CSS selector.
-        selector: String,
+        /// Selector strategy.
+        strategy: String,
+        /// Selector value.
+        value: String,
         /// Parent element ID (optional).
         #[serde(rename = "parentId", skip_serializing_if = "Option::is_none")]
         parent_id: Option<ElementId>,
@@ -205,11 +219,16 @@ pub enum ElementCommand {
     /// Subscribe to element appearance.
     #[serde(rename = "element.subscribe")]
     Subscribe {
-        /// CSS selector to watch.
-        selector: String,
+        /// Selector strategy.
+        strategy: String,
+        /// Selector value.
+        value: String,
         /// Auto-unsubscribe after first match.
         #[serde(rename = "oneShot")]
         one_shot: bool,
+        /// Timeout in milliseconds (optional).
+        #[serde(skip_serializing_if = "Option::is_none")]
+        timeout: Option<u64>,
     },
 
     /// Unsubscribe from element observation.
@@ -253,6 +272,19 @@ pub enum ElementCommand {
         /// Element ID.
         #[serde(rename = "elementId")]
         element_id: ElementId,
+    },
+
+    /// Capture screenshot of element.
+    #[serde(rename = "element.captureScreenshot")]
+    CaptureScreenshot {
+        /// Element ID.
+        #[serde(rename = "elementId")]
+        element_id: ElementId,
+        /// Image format: "png" or "jpeg".
+        format: String,
+        /// Quality for JPEG (0-100), ignored for PNG.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        quality: Option<u8>,
     },
 }
 
@@ -718,7 +750,8 @@ mod tests {
     #[test]
     fn test_element_find() {
         let cmd = ElementCommand::Find {
-            selector: "button.submit".to_string(),
+            strategy: "css".to_string(),
+            value: "button.submit".to_string(),
             parent_id: None,
         };
         let json = serde_json::to_string(&cmd).expect("serialize");
@@ -764,5 +797,36 @@ mod tests {
         };
         let json = serde_json::to_string(&cmd).expect("serialize");
         assert!(json.contains("network.addIntercept"));
+    }
+
+    #[test]
+    fn test_browsing_context_capture_screenshot() {
+        let cmd = BrowsingContextCommand::CaptureScreenshot {
+            format: "png".to_string(),
+            quality: None,
+        };
+        let json = serde_json::to_string(&cmd).expect("serialize");
+        assert!(json.contains("browsingContext.captureScreenshot"));
+        assert!(json.contains("\"format\":\"png\""));
+
+        let cmd_jpeg = BrowsingContextCommand::CaptureScreenshot {
+            format: "jpeg".to_string(),
+            quality: Some(85),
+        };
+        let json_jpeg = serde_json::to_string(&cmd_jpeg).expect("serialize");
+        assert!(json_jpeg.contains("\"quality\":85"));
+    }
+
+    #[test]
+    fn test_element_capture_screenshot() {
+        let cmd = ElementCommand::CaptureScreenshot {
+            element_id: ElementId::new("elem-uuid"),
+            format: "png".to_string(),
+            quality: None,
+        };
+        let json = serde_json::to_string(&cmd).expect("serialize");
+        assert!(json.contains("element.captureScreenshot"));
+        assert!(json.contains("elem-uuid"));
+        assert!(json.contains("\"format\":\"png\""));
     }
 }

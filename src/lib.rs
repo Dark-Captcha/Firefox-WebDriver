@@ -107,10 +107,10 @@ pub mod transport;
 
 // Browser types
 pub use browser::{
-    BodyAction, Cookie, Element, FrameInfo, HeadersAction, InterceptedRequest,
+    BodyAction, By, Cookie, Element, FrameInfo, HeadersAction, ImageFormat, InterceptedRequest,
     InterceptedRequestBody, InterceptedRequestHeaders, InterceptedResponse,
-    InterceptedResponseBody, ProxyConfig, ProxyType, RequestAction, RequestBody, ResponseAction,
-    Tab, Window,
+    InterceptedResponseBody, Key, ProxyConfig, ProxyType, RequestAction, RequestBody,
+    ResponseAction, ScreenshotBuilder, Tab, Window,
 };
 
 // Driver types

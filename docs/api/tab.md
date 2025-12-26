@@ -461,9 +461,240 @@ pub async fn clear_proxy(&self) -> Result<()>
 
 ---
 
+## Screenshot
+
+### `screenshot`
+
+Creates a screenshot builder for capturing page screenshots.
+
+```rust
+pub fn screenshot(&self) -> ScreenshotBuilder<'_>
+```
+
+#### Examples
+
+```rust
+// PNG screenshot as base64
+let data = tab.screenshot().png().capture().await?;
+
+// JPEG screenshot saved to file
+tab.screenshot().jpeg(85).save("page.jpg").await?;
+
+// Get raw bytes
+let bytes = tab.screenshot().png().capture_bytes().await?;
+```
+
+---
+
+### `capture_screenshot`
+
+Captures a PNG screenshot and returns base64-encoded data.
+
+```rust
+pub async fn capture_screenshot(&self) -> Result<String>
+```
+
+Shorthand for `tab.screenshot().png().capture().await`.
+
+---
+
+### `save_screenshot`
+
+Captures a screenshot and saves to a file.
+
+```rust
+pub async fn save_screenshot(&self, path: impl AsRef<Path>) -> Result<()>
+```
+
+Format is determined by file extension (.png or .jpg/.jpeg).
+
+---
+
+### ScreenshotBuilder Methods
+
+| Method            | Description                    |
+| ----------------- | ------------------------------ |
+| `png()`           | Sets PNG format (default)      |
+| `jpeg(quality)`   | Sets JPEG format (0-100)       |
+| `format(format)`  | Sets format via `ImageFormat`  |
+| `capture()`       | Returns base64 string          |
+| `capture_bytes()` | Returns raw bytes              |
+| `save(path)`      | Saves to file                  |
+
+---
+
+## Scroll
+
+### `scroll_by`
+
+Scrolls the page by the specified amount.
+
+```rust
+pub async fn scroll_by(&self, x: i32, y: i32) -> Result<()>
+```
+
+#### Examples
+
+```rust
+// Scroll down 500 pixels
+tab.scroll_by(0, 500).await?;
+
+// Scroll right 200 pixels
+tab.scroll_by(200, 0).await?;
+```
+
+---
+
+### `scroll_to`
+
+Scrolls the page to the specified position.
+
+```rust
+pub async fn scroll_to(&self, x: i32, y: i32) -> Result<()>
+```
+
+---
+
+### `scroll_to_top`
+
+Scrolls to the top of the page.
+
+```rust
+pub async fn scroll_to_top(&self) -> Result<()>
+```
+
+---
+
+### `scroll_to_bottom`
+
+Scrolls to the bottom of the page.
+
+```rust
+pub async fn scroll_to_bottom(&self) -> Result<()>
+```
+
+---
+
+### `get_scroll_position`
+
+Gets the current scroll position.
+
+```rust
+pub async fn get_scroll_position(&self) -> Result<(i32, i32)>
+```
+
+Returns tuple of (x, y) scroll position in pixels.
+
+---
+
+### `get_page_size`
+
+Gets the page dimensions (scrollable area).
+
+```rust
+pub async fn get_page_size(&self) -> Result<(i32, i32)>
+```
+
+Returns tuple of (width, height) in pixels.
+
+---
+
+### `get_viewport_size`
+
+Gets the viewport dimensions.
+
+```rust
+pub async fn get_viewport_size(&self) -> Result<(i32, i32)>
+```
+
+Returns tuple of (width, height) in pixels.
+
+---
+
+### `get_page_source`
+
+Gets the page source HTML.
+
+```rust
+pub async fn get_page_source(&self) -> Result<String>
+```
+
+---
+
+## Element Search with Strategies
+
+### `find_element`
+
+Finds a single element using a locator strategy.
+
+```rust
+pub async fn find_element(&self, by: By) -> Result<Element>
+```
+
+#### Examples
+
+```rust
+use firefox_webdriver::By;
+
+// CSS selector
+let btn = tab.find_element(By::Css("#submit")).await?;
+
+// By ID
+let form = tab.find_element(By::Id("login-form")).await?;
+
+// By text content
+let link = tab.find_element(By::Text("Click here")).await?;
+
+// By XPath
+let btn = tab.find_element(By::XPath("//button[@type='submit']")).await?;
+
+// By partial text
+let link = tab.find_element(By::PartialText("Read")).await?;
+```
+
+---
+
+### `find_elements`
+
+Finds all elements using a locator strategy.
+
+```rust
+pub async fn find_elements(&self, by: By) -> Result<Vec<Element>>
+```
+
+#### Examples
+
+```rust
+use firefox_webdriver::By;
+
+let buttons = tab.find_elements(By::Tag("button")).await?;
+let links = tab.find_elements(By::PartialText("Read")).await?;
+```
+
+---
+
+### By Strategies
+
+| Strategy          | Description            | Example                            |
+| ----------------- | ---------------------- | ---------------------------------- |
+| `By::Css`         | CSS selector (default) | `By::Css("#login")`                |
+| `By::XPath`       | XPath expression       | `By::XPath("//button")`            |
+| `By::Text`        | Exact text content     | `By::Text("Submit")`               |
+| `By::PartialText` | Partial text content   | `By::PartialText("Read")`          |
+| `By::Id`          | Element ID             | `By::Id("username")`               |
+| `By::Tag`         | Tag name               | `By::Tag("button")`                |
+| `By::Name`        | Name attribute         | `By::Name("email")`                |
+| `By::Class`       | Class name             | `By::Class("btn-primary")`         |
+| `By::LinkText`    | Link text (`<a>`)      | `By::LinkText("Home")`             |
+| `By::PartialLinkText` | Partial link text  | `By::PartialLinkText("Read")`      |
+
+---
+
 ## See Also
 
 - [Element](./element.md) - Element interaction
 - [Network](./network.md) - Network interception
 - [Storage](./storage.md) - Cookie and storage APIs
 - [Frames Guide](../guides/frames.md) - Frame switching patterns
+- [Screenshot Guide](../guides/screenshot.md) - Screenshot patterns
+- [Forms Guide](../guides/forms.md) - Form interaction patterns

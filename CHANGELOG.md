@@ -5,6 +5,72 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.3] - 2025-12-26
+
+### Added
+
+#### Screenshot API
+- `Tab::screenshot()` - Builder for capturing screenshots
+- `ScreenshotBuilder::png()` - PNG format (default)
+- `ScreenshotBuilder::jpeg(quality)` - JPEG format with quality (0-100)
+- `ScreenshotBuilder::full_page()` - Capture full scrollable page
+- `ScreenshotBuilder::capture()` - Returns base64 string
+- `ScreenshotBuilder::capture_bytes()` - Returns raw bytes
+- `ScreenshotBuilder::save(path)` - Saves to file
+- `Tab::capture_screenshot()` - Quick PNG capture
+- `Tab::save_screenshot(path)` - Quick save (format from extension)
+- `ImageFormat` enum (Png, Jpeg)
+
+#### Scroll API
+- `Tab::scroll_by(x, y)` - Scroll by offset
+- `Tab::scroll_to(x, y)` - Scroll to position
+- `Tab::scroll_to_top()` - Scroll to top
+- `Tab::scroll_to_bottom()` - Scroll to bottom
+- `Tab::get_scroll_position()` - Get current scroll position
+- `Tab::get_page_size()` - Get page dimensions
+- `Tab::get_viewport_size()` - Get viewport dimensions
+
+#### Element Convenience Methods
+- `Element::double_click()` - Double-click element
+- `Element::context_click()` - Right-click element
+- `Element::hover()` - Hover over element
+- `Element::scroll_into_view()` - Scroll element into view (smooth)
+- `Element::scroll_into_view_instant()` - Scroll element into view (instant)
+- `Element::get_bounding_rect()` - Get element position/size
+
+#### Checkbox/Radio Methods
+- `Element::is_checked()` - Check if checked
+- `Element::check()` - Check the element
+- `Element::uncheck()` - Uncheck the element
+- `Element::toggle()` - Toggle checked state
+- `Element::set_checked(bool)` - Set checked state
+
+#### Select/Dropdown Methods
+- `Element::select_by_text(text)` - Select option by visible text
+- `Element::select_by_value(value)` - Select option by value attribute
+- `Element::select_by_index(index)` - Select option by index
+- `Element::get_selected_value()` - Get selected option's value
+- `Element::get_selected_index()` - Get selected option's index
+- `Element::get_selected_text()` - Get selected option's text
+- `Element::is_multiple()` - Check if multi-select
+
+#### Navigation
+- `Tab::get_page_source()` - Get page HTML source
+
+### Changed
+
+- **BREAKING**: Refactored `src/browser/tab.rs` into `src/browser/tab/` module folder
+  - `tab/core.rs` - Tab struct and accessors
+  - `tab/navigation.rs` - URL navigation, history
+  - `tab/frames.rs` - Frame switching
+  - `tab/script.rs` - JavaScript execution
+  - `tab/elements.rs` - Element search and observation
+  - `tab/network.rs` - Request interception, blocking
+  - `tab/storage.rs` - Cookies, localStorage, sessionStorage
+  - `tab/proxy.rs` - Tab-level proxy
+  - `tab/screenshot.rs` - Screenshot capture
+  - `tab/scroll.rs` - Scroll control
+
 ## [0.1.2] - 2025-12-26
 
 ### Fixed

@@ -356,7 +356,282 @@ element.call_method("scrollIntoView", vec![json!({"behavior": "smooth"})]).await
 
 ---
 
+## Mouse Actions
+
+### `double_click`
+
+Double-clicks the element.
+
+```rust
+pub async fn double_click(&self) -> Result<()>
+```
+
+---
+
+### `context_click`
+
+Right-clicks the element (context menu click).
+
+```rust
+pub async fn context_click(&self) -> Result<()>
+```
+
+---
+
+### `hover`
+
+Hovers over the element.
+
+```rust
+pub async fn hover(&self) -> Result<()>
+```
+
+---
+
+## Scroll
+
+### `scroll_into_view`
+
+Scrolls the element into view with smooth animation.
+
+```rust
+pub async fn scroll_into_view(&self) -> Result<()>
+```
+
+---
+
+### `scroll_into_view_instant`
+
+Scrolls the element into view immediately (no animation).
+
+```rust
+pub async fn scroll_into_view_instant(&self) -> Result<()>
+```
+
+---
+
+### `get_bounding_rect`
+
+Gets the element's bounding rectangle.
+
+```rust
+pub async fn get_bounding_rect(&self) -> Result<(f64, f64, f64, f64)>
+```
+
+Returns tuple of (x, y, width, height) in pixels.
+
+---
+
+## Checkbox/Radio
+
+### `is_checked`
+
+Checks if the element is checked (for checkboxes/radio buttons).
+
+```rust
+pub async fn is_checked(&self) -> Result<bool>
+```
+
+---
+
+### `check`
+
+Checks the checkbox/radio button. Does nothing if already checked.
+
+```rust
+pub async fn check(&self) -> Result<()>
+```
+
+---
+
+### `uncheck`
+
+Unchecks the checkbox. Does nothing if already unchecked.
+
+```rust
+pub async fn uncheck(&self) -> Result<()>
+```
+
+---
+
+### `toggle`
+
+Toggles the checkbox state.
+
+```rust
+pub async fn toggle(&self) -> Result<()>
+```
+
+---
+
+### `set_checked`
+
+Sets the checked state.
+
+```rust
+pub async fn set_checked(&self, checked: bool) -> Result<()>
+```
+
+---
+
+## Select/Dropdown
+
+### `select_by_text`
+
+Selects an option by visible text (for `<select>` elements).
+
+```rust
+pub async fn select_by_text(&self, text: &str) -> Result<()>
+```
+
+#### Examples
+
+```rust
+let select = tab.find_element(By::Css("select#country")).await?;
+select.select_by_text("United States").await?;
+```
+
+---
+
+### `select_by_value`
+
+Selects an option by value attribute.
+
+```rust
+pub async fn select_by_value(&self, value: &str) -> Result<()>
+```
+
+---
+
+### `select_by_index`
+
+Selects an option by index.
+
+```rust
+pub async fn select_by_index(&self, index: usize) -> Result<()>
+```
+
+---
+
+### `get_selected_value`
+
+Gets the selected option's value.
+
+```rust
+pub async fn get_selected_value(&self) -> Result<Option<String>>
+```
+
+---
+
+### `get_selected_index`
+
+Gets the selected option's index.
+
+```rust
+pub async fn get_selected_index(&self) -> Result<i64>
+```
+
+---
+
+### `get_selected_text`
+
+Gets the selected option's text.
+
+```rust
+pub async fn get_selected_text(&self) -> Result<Option<String>>
+```
+
+---
+
+### `is_multiple`
+
+Checks if this is a multi-select element.
+
+```rust
+pub async fn is_multiple(&self) -> Result<bool>
+```
+
+---
+
+## Screenshot
+
+### `screenshot`
+
+Captures a PNG screenshot of this element.
+
+```rust
+pub async fn screenshot(&self) -> Result<String>
+```
+
+Returns base64-encoded image data.
+
+---
+
+### `screenshot_jpeg`
+
+Captures a JPEG screenshot with specified quality.
+
+```rust
+pub async fn screenshot_jpeg(&self, quality: u8) -> Result<String>
+```
+
+---
+
+### `screenshot_bytes`
+
+Captures a screenshot and returns raw bytes.
+
+```rust
+pub async fn screenshot_bytes(&self) -> Result<Vec<u8>>
+```
+
+---
+
+### `save_screenshot`
+
+Captures a screenshot and saves to a file.
+
+```rust
+pub async fn save_screenshot(&self, path: impl AsRef<Path>) -> Result<()>
+```
+
+Format is determined by file extension (.png or .jpg/.jpeg).
+
+---
+
+## Nested Search with Strategies
+
+### `find_element`
+
+Finds a child element using a locator strategy.
+
+```rust
+pub async fn find_element(&self, by: By) -> Result<Element>
+```
+
+#### Examples
+
+```rust
+use firefox_webdriver::By;
+
+let form = tab.find_element(By::Id("login-form")).await?;
+let btn = form.find_element(By::Css("button[type='submit']")).await?;
+```
+
+---
+
+### `find_elements`
+
+Finds all child elements using a locator strategy.
+
+```rust
+pub async fn find_elements(&self, by: By) -> Result<Vec<Element>>
+```
+
+---
+
 ## See Also
 
 - [Tab](./tab.md) - Tab automation
 - [Element Interaction Guide](../guides/element-interaction.md) - Patterns for finding and interacting with elements
+- [Forms Guide](../guides/forms.md) - Form interaction patterns

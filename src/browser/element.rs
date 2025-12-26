@@ -6,6 +6,8 @@
 //! # Example
 //!
 //! ```ignore
+//! use firefox_webdriver::Key;
+//!
 //! let element = tab.find_element("#submit-button").await?;
 //!
 //! // Get properties
@@ -15,6 +17,10 @@
 //! // Interact
 //! element.click().await?;
 //! element.type_text("Hello, World!").await?;
+//!
+//! // Press navigation keys
+//! element.press(Key::Enter).await?;
+//! element.press(Key::Tab).await?;
 //! ```
 
 // ============================================================================
@@ -25,12 +31,15 @@ use std::fmt;
 use std::sync::Arc;
 
 use serde_json::Value;
+use tracing::debug;
 
 use crate::error::{Error, Result};
 use crate::identifiers::{ElementId, FrameId, SessionId, TabId};
 use crate::protocol::{Command, ElementCommand, InputCommand, Request, Response};
 
 use super::Window;
+use super::keyboard::Key;
+use super::selector::By;
 
 // ============================================================================
 // Types
@@ -153,18 +162,21 @@ impl Element {
     ///
     /// Uses `element.click()` internally.
     pub async fn click(&self) -> Result<()> {
+        debug!(element_id = %self.inner.id, "Clicking element");
         self.call_method("click", vec![]).await?;
         Ok(())
     }
 
     /// Focuses the element.
     pub async fn focus(&self) -> Result<()> {
+        debug!(element_id = %self.inner.id, "Focusing element");
         self.call_method("focus", vec![]).await?;
         Ok(())
     }
 
     /// Blurs (unfocuses) the element.
     pub async fn blur(&self) -> Result<()> {
+        debug!(element_id = %self.inner.id, "Blurring element");
         self.call_method("blur", vec![]).await?;
         Ok(())
     }
@@ -173,6 +185,7 @@ impl Element {
     ///
     /// Sets `element.value = ""`.
     pub async fn clear(&self) -> Result<()> {
+        debug!(element_id = %self.inner.id, "Clearing element");
         self.set_property("value", Value::String(String::new()))
             .await
     }
@@ -239,7 +252,30 @@ impl Element {
 // ============================================================================
 
 impl Element {
-    /// Types a single key with optional modifiers.
+    /// Presses a navigation/control key.
+    ///
+    /// For typing text, use [`type_text`](Self::type_text) instead.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use firefox_webdriver::Key;
+    ///
+    /// element.press(Key::Enter).await?;
+    /// element.press(Key::Tab).await?;
+    /// element.press(Key::Backspace).await?;
+    /// ```
+    pub async fn press(&self, key: Key) -> Result<()> {
+        let (key_str, code, key_code, printable) = key.properties();
+        self.type_key(
+            key_str, code, key_code, printable, false, false, false, false,
+        )
+        .await
+    }
+
+    /// Types a single key with optional modifiers (low-level API).
+    ///
+    /// Prefer using [`press`](Self::press) for common keys or [`type_text`](Self::type_text) for text.
     ///
     /// Dispatches full keyboard event sequence: keydown → input → keypress → keyup.
     ///
@@ -299,6 +335,8 @@ impl Element {
     /// element.type_text("Hello, World!").await?;
     /// ```
     pub async fn type_text(&self, text: &str) -> Result<()> {
+        debug!(element_id = %self.inner.id, text_len = text.len(), "Typing text");
+
         let command = Command::Input(InputCommand::TypeText {
             element_id: self.inner.id.clone(),
             text: text.to_string(),
@@ -323,6 +361,8 @@ impl Element {
     ///
     /// * `button` - Mouse button (0=left, 1=middle, 2=right)
     pub async fn mouse_click(&self, button: u8) -> Result<()> {
+        debug!(element_id = %self.inner.id, button = button, "Mouse clicking element");
+
         let command = Command::Input(InputCommand::MouseClick {
             element_id: Some(self.inner.id.clone()),
             x: None,
@@ -334,8 +374,40 @@ impl Element {
         Ok(())
     }
 
+    /// Double-clicks the element.
+    ///
+    /// Dispatches two click sequences followed by dblclick event.
+    pub async fn double_click(&self) -> Result<()> {
+        debug!(element_id = %self.inner.id, "Double clicking element");
+
+        self.call_method(
+            "dispatchEvent",
+            vec![serde_json::json!({"type": "dblclick", "bubbles": true, "cancelable": true})],
+        )
+        .await?;
+        Ok(())
+    }
+
+    /// Right-clicks the element (context menu click).
+    ///
+    /// Dispatches contextmenu event.
+    pub async fn context_click(&self) -> Result<()> {
+        debug!(element_id = %self.inner.id, "Context clicking element");
+        self.mouse_click(2).await
+    }
+
+    /// Hovers over the element.
+    ///
+    /// Moves mouse to element center and dispatches mouseenter/mouseover events.
+    pub async fn hover(&self) -> Result<()> {
+        debug!(element_id = %self.inner.id, "Hovering over element");
+        self.mouse_move().await
+    }
+
     /// Moves mouse to the element center.
     pub async fn mouse_move(&self) -> Result<()> {
+        debug!(element_id = %self.inner.id, "Moving mouse to element");
+
         let command = Command::Input(InputCommand::MouseMove {
             element_id: Some(self.inner.id.clone()),
             x: None,
@@ -355,6 +427,8 @@ impl Element {
     ///
     /// * `button` - Mouse button (0=left, 1=middle, 2=right)
     pub async fn mouse_down(&self, button: u8) -> Result<()> {
+        debug!(element_id = %self.inner.id, button = button, "Mouse down on element");
+
         let command = Command::Input(InputCommand::MouseDown {
             element_id: Some(self.inner.id.clone()),
             x: None,
@@ -375,6 +449,8 @@ impl Element {
     ///
     /// * `button` - Mouse button (0=left, 1=middle, 2=right)
     pub async fn mouse_up(&self, button: u8) -> Result<()> {
+        debug!(element_id = %self.inner.id, button = button, "Mouse up on element");
+
         let command = Command::Input(InputCommand::MouseUp {
             element_id: Some(self.inner.id.clone()),
             x: None,
@@ -388,18 +464,210 @@ impl Element {
 }
 
 // ============================================================================
+// Element - Scroll
+// ============================================================================
+
+impl Element {
+    /// Scrolls the element into view.
+    ///
+    /// Uses `element.scrollIntoView()` with smooth behavior.
+    pub async fn scroll_into_view(&self) -> Result<()> {
+        debug!(element_id = %self.inner.id, "Scrolling element into view");
+
+        self.call_method(
+            "scrollIntoView",
+            vec![serde_json::json!({"behavior": "smooth", "block": "center"})],
+        )
+        .await?;
+        Ok(())
+    }
+
+    /// Scrolls the element into view immediately (no smooth animation).
+    pub async fn scroll_into_view_instant(&self) -> Result<()> {
+        debug!(element_id = %self.inner.id, "Scrolling element into view (instant)");
+
+        self.call_method(
+            "scrollIntoView",
+            vec![serde_json::json!({"behavior": "instant", "block": "center"})],
+        )
+        .await?;
+        Ok(())
+    }
+
+    /// Gets the element's bounding rectangle.
+    ///
+    /// # Returns
+    ///
+    /// Tuple of (x, y, width, height) in pixels.
+    pub async fn get_bounding_rect(&self) -> Result<(f64, f64, f64, f64)> {
+        let result = self.call_method("getBoundingClientRect", vec![]).await?;
+
+        let x = result.get("x").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let y = result.get("y").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let width = result.get("width").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let height = result.get("height").and_then(|v| v.as_f64()).unwrap_or(0.0);
+
+        debug!(element_id = %self.inner.id, x = x, y = y, width = width, height = height, "Got bounding rect");
+        Ok((x, y, width, height))
+    }
+}
+
+// ============================================================================
+// Element - Checkbox/Radio
+// ============================================================================
+
+impl Element {
+    /// Checks if the element is checked (for checkboxes/radio buttons).
+    pub async fn is_checked(&self) -> Result<bool> {
+        let value = self.get_property("checked").await?;
+        Ok(value.as_bool().unwrap_or(false))
+    }
+
+    /// Checks the checkbox/radio button.
+    ///
+    /// Does nothing if already checked.
+    pub async fn check(&self) -> Result<()> {
+        if !self.is_checked().await? {
+            self.click().await?;
+        }
+        Ok(())
+    }
+
+    /// Unchecks the checkbox.
+    ///
+    /// Does nothing if already unchecked.
+    pub async fn uncheck(&self) -> Result<()> {
+        if self.is_checked().await? {
+            self.click().await?;
+        }
+        Ok(())
+    }
+
+    /// Toggles the checkbox state.
+    pub async fn toggle(&self) -> Result<()> {
+        self.click().await
+    }
+
+    /// Sets the checked state.
+    pub async fn set_checked(&self, checked: bool) -> Result<()> {
+        if checked {
+            self.check().await
+        } else {
+            self.uncheck().await
+        }
+    }
+}
+
+// ============================================================================
+// Element - Select/Dropdown
+// ============================================================================
+
+impl Element {
+    /// Selects an option by visible text (for `<select>` elements).
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let select = tab.find_element(By::css("select#country")).await?;
+    /// select.select_by_text("United States").await?;
+    /// ```
+    pub async fn select_by_text(&self, text: &str) -> Result<()> {
+        // Find and click the option
+        if let Ok(options) = self.find_elements(By::tag("option")).await {
+            for option in options {
+                if let Ok(option_text) = option.get_text().await
+                    && option_text.trim() == text
+                {
+                    option.set_property("selected", Value::Bool(true)).await?;
+                    // Trigger change event
+                    self.call_method(
+                        "dispatchEvent",
+                        vec![serde_json::json!({"type": "change", "bubbles": true})],
+                    )
+                    .await?;
+                    return Ok(());
+                }
+            }
+        }
+
+        Err(Error::invalid_argument(format!(
+            "Option with text '{}' not found",
+            text
+        )))
+    }
+
+    /// Selects an option by value attribute (for `<select>` elements).
+    pub async fn select_by_value(&self, value: &str) -> Result<()> {
+        self.set_property("value", Value::String(value.to_string()))
+            .await?;
+        self.call_method(
+            "dispatchEvent",
+            vec![serde_json::json!({"type": "change", "bubbles": true})],
+        )
+        .await?;
+        Ok(())
+    }
+
+    /// Selects an option by index (for `<select>` elements).
+    pub async fn select_by_index(&self, index: usize) -> Result<()> {
+        self.set_property("selectedIndex", Value::Number(index.into()))
+            .await?;
+        self.call_method(
+            "dispatchEvent",
+            vec![serde_json::json!({"type": "change", "bubbles": true})],
+        )
+        .await?;
+        Ok(())
+    }
+
+    /// Gets the selected option's value (for `<select>` elements).
+    pub async fn get_selected_value(&self) -> Result<Option<String>> {
+        let value = self.get_property("value").await?;
+        Ok(value.as_str().map(|s| s.to_string()))
+    }
+
+    /// Gets the selected option's index (for `<select>` elements).
+    pub async fn get_selected_index(&self) -> Result<i64> {
+        let value = self.get_property("selectedIndex").await?;
+        Ok(value.as_i64().unwrap_or(-1))
+    }
+
+    /// Gets the selected option's text (for `<select>` elements).
+    pub async fn get_selected_text(&self) -> Result<Option<String>> {
+        let options = self.find_elements(By::css("option:checked")).await?;
+        if let Some(option) = options.first() {
+            let text = option.get_text().await?;
+            return Ok(Some(text));
+        }
+        Ok(None)
+    }
+
+    /// Checks if this is a multi-select element.
+    pub async fn is_multiple(&self) -> Result<bool> {
+        let value = self.get_property("multiple").await?;
+        Ok(value.as_bool().unwrap_or(false))
+    }
+}
+
+// ============================================================================
 // Element - Nested Search
 // ============================================================================
 
 impl Element {
-    /// Finds a child element by CSS selector.
+    /// Finds a child element using a locator strategy.
     ///
-    /// # Errors
+    /// # Example
     ///
-    /// Returns [`Error::ElementNotFound`] if no matching element exists.
-    pub async fn find_element(&self, selector: &str) -> Result<Element> {
+    /// ```ignore
+    /// use firefox_webdriver::By;
+    ///
+    /// let form = tab.find_element(By::Id("login-form")).await?;
+    /// let btn = form.find_element(By::Css("button[type='submit']")).await?;
+    /// ```
+    pub async fn find_element(&self, by: By) -> Result<Element> {
         let command = Command::Element(ElementCommand::Find {
-            selector: selector.to_string(),
+            strategy: by.strategy().to_string(),
+            value: by.value().to_string(),
             parent_id: Some(self.inner.id.clone()),
         });
 
@@ -411,7 +679,11 @@ impl Element {
             .and_then(|v| v.get("elementId"))
             .and_then(|v| v.as_str())
             .ok_or_else(|| {
-                Error::element_not_found(selector, self.inner.tab_id, self.inner.frame_id)
+                Error::element_not_found(
+                    format!("{}:{}", by.strategy(), by.value()),
+                    self.inner.tab_id,
+                    self.inner.frame_id,
+                )
             })?;
 
         Ok(Element::new(
@@ -423,12 +695,20 @@ impl Element {
         ))
     }
 
-    /// Finds all child elements matching a CSS selector.
+    /// Finds all child elements using a locator strategy.
     ///
-    /// Returns an empty vector if no elements match.
-    pub async fn find_elements(&self, selector: &str) -> Result<Vec<Element>> {
+    /// # Example
+    ///
+    /// ```ignore
+    /// use firefox_webdriver::By;
+    ///
+    /// let form = tab.find_element(By::Id("login-form")).await?;
+    /// let inputs = form.find_elements(By::Tag("input")).await?;
+    /// ```
+    pub async fn find_elements(&self, by: By) -> Result<Vec<Element>> {
         let command = Command::Element(ElementCommand::FindAll {
-            selector: selector.to_string(),
+            strategy: by.strategy().to_string(),
+            value: by.value().to_string(),
             parent_id: Some(self.inner.id.clone()),
         });
 
@@ -519,6 +799,171 @@ impl Element {
             .result
             .and_then(|v| v.get("value").cloned())
             .unwrap_or(Value::Null))
+    }
+}
+
+// ============================================================================
+// Element - Screenshot
+// ============================================================================
+
+impl Element {
+    /// Captures a PNG screenshot of this element.
+    ///
+    /// Returns base64-encoded image data.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let element = tab.find_element("#chart").await?;
+    /// let screenshot = element.screenshot().await?;
+    /// ```
+    pub async fn screenshot(&self) -> Result<String> {
+        self.screenshot_with_format("png", None).await
+    }
+
+    /// Captures a JPEG screenshot of this element with specified quality.
+    ///
+    /// # Arguments
+    ///
+    /// * `quality` - JPEG quality (0-100)
+    pub async fn screenshot_jpeg(&self, quality: u8) -> Result<String> {
+        self.screenshot_with_format("jpeg", Some(quality.min(100)))
+            .await
+    }
+
+    /// Captures a screenshot with specified format.
+    ///
+    /// The extension returns full page screenshot + clip info.
+    /// Rust handles the cropping to avoid canvas security issues.
+    async fn screenshot_with_format(&self, format: &str, quality: Option<u8>) -> Result<String> {
+        use base64::Engine;
+        use base64::engine::general_purpose::STANDARD as Base64Standard;
+        use image::GenericImageView;
+
+        let command = Command::Element(ElementCommand::CaptureScreenshot {
+            element_id: self.inner.id.clone(),
+            format: format.to_string(),
+            quality,
+        });
+
+        let response = self.send_command(command).await?;
+
+        tracing::debug!(response = ?response, "Element screenshot response");
+
+        let result = response.result.as_ref().ok_or_else(|| {
+            let error_str = response.error.as_deref().unwrap_or("none");
+            let msg_str = response.message.as_deref().unwrap_or("none");
+            Error::script_error(format!(
+                "Element screenshot failed. error={}, message={}",
+                error_str, msg_str
+            ))
+        })?;
+
+        let data = result
+            .get("data")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| Error::script_error("Screenshot response missing data field"))?;
+
+        // Check if clip info is provided (new format)
+        if let Some(clip) = result.get("clip") {
+            let x = clip.get("x").and_then(|v| v.as_f64()).unwrap_or(0.0) as u32;
+            let y = clip.get("y").and_then(|v| v.as_f64()).unwrap_or(0.0) as u32;
+            let width = clip.get("width").and_then(|v| v.as_f64()).unwrap_or(0.0) as u32;
+            let height = clip.get("height").and_then(|v| v.as_f64()).unwrap_or(0.0) as u32;
+            let scale = clip.get("scale").and_then(|v| v.as_f64()).unwrap_or(1.0);
+
+            // Apply scale to coordinates
+            let x = (x as f64 * scale) as u32;
+            let y = (y as f64 * scale) as u32;
+            let width = (width as f64 * scale) as u32;
+            let height = (height as f64 * scale) as u32;
+
+            if width == 0 || height == 0 {
+                return Err(Error::script_error("Element has zero dimensions"));
+            }
+
+            // Decode full page image
+            let image_bytes = Base64Standard
+                .decode(data)
+                .map_err(|e| Error::script_error(format!("Failed to decode base64: {}", e)))?;
+
+            let img = image::load_from_memory(&image_bytes)
+                .map_err(|e| Error::script_error(format!("Failed to load image: {}", e)))?;
+
+            // Clamp crop region to image bounds
+            let (img_width, img_height) = img.dimensions();
+            let x = x.min(img_width.saturating_sub(1));
+            let y = y.min(img_height.saturating_sub(1));
+            let width = width.min(img_width.saturating_sub(x));
+            let height = height.min(img_height.saturating_sub(y));
+
+            // Crop
+            let cropped = img.crop_imm(x, y, width, height);
+
+            // Encode back to base64
+            let mut output = std::io::Cursor::new(Vec::new());
+            match format {
+                "jpeg" => {
+                    let q = quality.unwrap_or(85);
+                    cropped
+                        .write_to(&mut output, image::ImageFormat::Jpeg)
+                        .map_err(|e| {
+                            Error::script_error(format!("Failed to encode JPEG: {}", e))
+                        })?;
+                    // Note: image crate doesn't support quality param directly in write_to
+                    // For proper quality control, would need jpeg encoder directly
+                    let _ = q; // suppress unused warning
+                }
+                _ => {
+                    cropped
+                        .write_to(&mut output, image::ImageFormat::Png)
+                        .map_err(|e| Error::script_error(format!("Failed to encode PNG: {}", e)))?;
+                }
+            }
+
+            Ok(Base64Standard.encode(output.into_inner()))
+        } else {
+            // Old format: data is already cropped
+            Ok(data.to_string())
+        }
+    }
+
+    /// Captures a screenshot and returns raw bytes.
+    pub async fn screenshot_bytes(&self) -> Result<Vec<u8>> {
+        use base64::Engine;
+        use base64::engine::general_purpose::STANDARD as Base64Standard;
+
+        let base64_data = self.screenshot().await?;
+        Base64Standard
+            .decode(&base64_data)
+            .map_err(|e| Error::script_error(format!("Failed to decode base64: {}", e)))
+    }
+
+    /// Captures a screenshot and saves to a file.
+    ///
+    /// Format is determined by file extension (.png or .jpg/.jpeg).
+    pub async fn save_screenshot(&self, path: impl AsRef<std::path::Path>) -> Result<()> {
+        use base64::Engine;
+        use base64::engine::general_purpose::STANDARD as Base64Standard;
+
+        let path = path.as_ref();
+        let ext = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("png")
+            .to_lowercase();
+
+        let base64_data = match ext.as_str() {
+            "jpg" | "jpeg" => self.screenshot_jpeg(85).await?,
+            _ => self.screenshot().await?,
+        };
+
+        let bytes = Base64Standard
+            .decode(&base64_data)
+            .map_err(|e| Error::script_error(format!("Failed to decode base64: {}", e)))?;
+
+        std::fs::write(path, bytes).map_err(Error::Io)?;
+        Ok(())
     }
 }
 

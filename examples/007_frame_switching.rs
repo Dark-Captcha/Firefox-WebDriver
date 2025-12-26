@@ -24,7 +24,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 
 use common::{Args, extension_path, firefox_binary};
-use firefox_webdriver::{Driver, Result};
+use firefox_webdriver::{By, Driver, Result};
 
 // ============================================================================
 // Constants
@@ -151,7 +151,7 @@ async fn run(args: Args) -> Result<()> {
 
     println!("[3] switch_to_frame (by element)");
 
-    let iframe1 = tab.find_element("#frame1").await?;
+    let iframe1 = tab.find_element(By::css("#frame1")).await?;
     println!("    Found iframe element: {}", iframe1.id());
 
     let frame1_tab = tab.switch_to_frame(&iframe1).await?;
@@ -160,7 +160,7 @@ async fn run(args: Args) -> Result<()> {
         frame1_tab.frame_id().as_u64()
     );
 
-    match frame1_tab.find_element("#frame1-text").await {
+    match frame1_tab.find_element(By::css("#frame1-text")).await {
         Ok(el) => {
             let text = el.get_text().await?;
             println!("    Frame content: '{text}'");
@@ -201,7 +201,7 @@ async fn run(args: Args) -> Result<()> {
         frame2_tab.frame_id().as_u64()
     );
 
-    match frame2_tab.find_element("#frame2-text").await {
+    match frame2_tab.find_element(By::css("#frame2-text")).await {
         Ok(el) => {
             let text = el.get_text().await?;
             println!("    Frame content: '{text}'");
@@ -222,7 +222,7 @@ async fn run(args: Args) -> Result<()> {
     println!("    Switched to frame ID: {}", main_tab.frame_id().as_u64());
 
     if main_tab.is_main_frame() {
-        match main_tab.find_element("#main-content").await {
+        match main_tab.find_element(By::css("#main-content")).await {
             Ok(el) => {
                 let text = el.get_text().await?;
                 println!("    Main content: '{text}'");
